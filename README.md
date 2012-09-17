@@ -12,6 +12,7 @@ NOTE: this library is currently UNDER DEVELOPMENT.
 You can find the latest stable version (pyXGPR) HERE: http://www-kd.iai.uni-bonn.de/index.php?page=software_details&id=19.
 
 Please feel free to contact me if you have any questions or suggestions.
+
 Marion Neumann [marion dot neumann at iais dot fraunhofer dot de]
 
 ---------------------------------------------------
