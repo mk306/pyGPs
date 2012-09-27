@@ -47,30 +47,8 @@ def flatten(l, ltypes=(list, tuple)):
         i += 1
     return ltype(l)
 
-##def feval(funcName, *args):
-##    assert(isinstance(funcName, list))
-##    if len(funcName) > 1:
-##        # This is a composition
-##        assert(len(funcName) == 2)
-##        z = funcName[0]
-##        # Split off the module name (before the period)
-##        mod,fun = z[0].split('.')
-##        mod = __import__(mod) 
-##        #print 'Composition of ',fun,' on ',funcName[1],' with args = ',args
-##        return getattr(mod,fun)(funcName[1],*args)
-##    else:
-##        # Call the function, split off the module name (before the period)
-##        mod,fun = funcName[0].split('.')
-##        # Make sure the module is imported and get it as a variable
-##        mod = __import__(mod)
-##        #print 'Standalone = ',fun,' with args = ', args
-##        return getattr(mod,fun)(*args)
-
 ## NEW 01/08/2012
-'''NOTE that the __import__ statements are eliminated. The convention will be
-to append the covariance functions with kernels.'''
-def feval(funcName, *args):
-    
+def feval(funcName, *args):    
     assert(isinstance(funcName, list))
     if len(funcName) > 1:
         # This is a composition
@@ -90,9 +68,6 @@ def feval(funcName, *args):
             # Call the function, split off the module name (before the period)
             mod,fun = z.split('.')
     return getattr(kernels,fun)(*args)
-
-
-
 
 def convert_single(v,D):
     if isinstance(v,str):
@@ -116,26 +91,6 @@ def convert(v,D):
         w = convert_single(v,D)
     return w
 
-
-#
-#def check_hyperparameters(covfunc,logtheta):
-#    ## CHECK (hyper)parameters and covariance function(s)
-#    if len(covfunc) > 1:
-#        try:
-#            assert( sum(flatten(feval(covfunc))) - len(logtheta) == 0 )
-#        except AssertionError:
-#            print 'ERROR: number of hyperparameters does not match given covariance function:', sum(flatten(feval(covfunc))), 'hyperparameters needed (', len(logtheta), 'given )'
-#            exit()
-#    else:
-#        try:
-#            assert(feval(covfunc) - len(logtheta) == 0)
-#        except AssertionError:
-#            print 'ERROR: number of hyperparameters does not match given covariance function:', feval(covfunc), 'hyperparameters needed (', len(logtheta), 'given )'
-#            exit()
-#    return True
-
-
-
 def check_hyperparameters(covfunc,logtheta,x):
     [n,D] = x.shape
     ## CHECK (hyper)parameters and covariance function(s)
@@ -154,7 +109,6 @@ def check_hyperparameters(covfunc,logtheta,x):
             print 'ERROR: number of hyperparameters does not match given covariance function:', convert(v,D), 'hyperparameters needed (', len(logtheta), 'given )!'
             exit()
     return True
-
 
 def get_nb_param(covList, dim):
     num_hyp = 0
@@ -187,7 +141,6 @@ def get_nb_param(covList, dim):
                         str2num -= current_number
             num_hyp += str2num
     return num_hyp
-
 
 def get_index_vec(a,b):
     ''' 

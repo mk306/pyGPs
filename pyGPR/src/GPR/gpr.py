@@ -82,7 +82,7 @@ def gp_train(loghyper, covfunc, X, y, R=None, w=None):
     #    print '        xgp_train()'
 
     [logtheta, fvals, iter] = minimize.run(loghyper, nlml, dnlml, [covfunc, X, y, R, w], maxnumfuneval=100)
-    
+
     return logtheta
     
 def gp_pred(logtheta, covfunc, X, y, Xstar, R=None, w=None, Rstar=None):
@@ -101,13 +101,13 @@ def gp_pred(logtheta, covfunc, X, y, Xstar, R=None, w=None, Rstar=None):
         [Kss, Kstar] = feval(covfunc, logtheta, X, R, w, Xstar, Rstar)   # test covariances
 
     mean_y = 1.*sum(y)/len(y)     
-    L = linalg.cholesky(K)                      # cholesky factorization of cov (lower triangular matrix)
+    L = linalg.cholesky(K)                             # cholesky factorization of cov (lower triangular matrix)
     alpha = solve_chol(L.transpose(),y-mean_y)         # compute inv(K)*(y-mean(y))
-    out1 = mean_y + dot(Kstar.transpose(),alpha)         # predicted means
+    out1 = mean_y + dot(Kstar.transpose(),alpha)       # predicted means
     v = linalg.solve(L, Kstar)                  
     tmp=v*v                                     
     out2 = Kss - array([tmp.sum(axis=0)]).transpose()  # predicted variances  
-
+    out2[out2 < 0.] = 0.                               # Added for numerical stability
     return [out1, out2]
 
 def solve_chol(A,B):
@@ -126,7 +126,8 @@ def nlml(loghyper, covfunc, X, y, R=None, w=None):
     # compute inv(K)*y
     alpha = solve_chol(L.transpose(),y-mean_y)
     # compute the negative log marginal likelihood
-    return (0.5*dot((y-mean_y).transpose(),alpha) + (log(diag(L))).sum(axis=0) + 0.5*n*log(2*pi))[0][0] 
+    return ( 0.5*dot((y-mean_y).transpose(),alpha) + (log(diag(L))).sum(axis=0)  + \
+           0.5*n*log(2.*pi) )
 
 def dnlml(loghyper, covfunc, X, y, R=None, w=None):
     #out = zeros((loghyper.shape))
