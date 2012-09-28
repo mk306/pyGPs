@@ -37,8 +37,11 @@ Created on 31/08/2009
     (note: these also work for the XGP framework but mixture weights have to be adjusted separately!)
     
     INPUT:
-    loghyper       column vector of log hyperparameters (of the covariance function)  
-    covfunc        is the covariance function (string)
+    gp             a dictionary containing
+        meantheta     column vector of hyperparameters of the mean function  
+        meanfunc      is the mean function (string)
+        meantheta     column vector of log hyperparameters (of the covariance function)  
+        covfunc       is the covariance function (string)
     X              is the n by D matrix of training inputs
     y              is the column vector of targets (size n)
                    NOTE: y must have zero mean!!
@@ -47,9 +50,9 @@ Created on 31/08/2009
     R, w, Rstar    are inputs for XGP regression
     
     OUTPUT:
-    logtheta       are the learnt hyperparameters for the given cov func
-    out1           is the vector of predicted means
-    out2           is the vector of predicted variances
+    gp             the structure containing the learnt hyperparameters for the given mean and cov funcs, resp.
+    val            the final value of the objective function
+    iters          the number of iterations used by the method
     
     
     TODOS:
@@ -68,7 +71,7 @@ from numpy import linalg, array, dot, zeros, size, log, diag, pi, eye
 from Tools.general import feval
 import minimize
 
-def gp_train(loghyper, covfunc, X, y, R=None, w=None):
+def gp_train(gp, X, y, R=None, w=None):
     ''' gp_train() returns the learnt hyperparameters.
     Following chapter 5.4.1 in Rasmussen and Williams: GPs for ML (2006).
     The original version (MATLAB implementation) of used optimizer minimize.m 
@@ -76,86 +79,101 @@ def gp_train(loghyper, covfunc, X, y, R=None, w=None):
     The used python adaptation is by Roland Memisevic 2008.
     
     Input R and w is needed for XGP regression! '''
-    #if R==None: 
-    #    print '        gp_train()'
-    #else:
-    #    print '        xgp_train()'
 
-    [logtheta, fvals, iter] = minimize.run(loghyper, nlml, dnlml, [covfunc, X, y, R, w], maxnumfuneval=100)
-
-    return logtheta
+    # Build the parameter list that we will optimize
+    theta = gp['meantheta'] + gp['covtheta']
+    [theta, fvals, iter] = minimize.run(theta, nlml, dnlml, [gp, X, y, R, w], maxnumfuneval=100)
+    mt = len(gp['meantheta'])
+    gp['meantheta'] = list(theta[:mt])
+    gp['covtheta']  = list(theta[mt:])
+    return gp, fvals, iter
     
-def gp_pred(logtheta, covfunc, X, y, Xstar, R=None, w=None, Rstar=None):
-    #if R==None: 
-    #    print '        gp_pred()'
-    #else:
-    #    print '        xgp_pred()'
-        
+def gp_pred(gp, X, y, Xstar, R=None, w=None, Rstar=None):
     # compute training set covariance matrix (K) and
     # (marginal) test predictions (Kss = self-cov; Kstar = corss-cov)
     if R==None:
-        K = feval(covfunc, logtheta, X)                     # training covariances
-        [Kss, Kstar] = feval(covfunc, logtheta, X, Xstar)   # test covariances (Kss = self covariances, Kstar = cov between train and test cases)
+        K = feval(gp['covfunc'], gp['covtheta'], X)                     # training covariances
+        [Kss, Kstar] = feval(gp['covfunc'], gp['covtheta'], X, Xstar)   # test covariances (Kss = self covariances, Kstar = cov between train and test cases)
     else:
-        K = feval(covfunc, logtheta, X, R, w)               # training covariances
-        [Kss, Kstar] = feval(covfunc, logtheta, X, R, w, Xstar, Rstar)   # test covariances
+        K = feval(gp['covfunc'], gp['covtheta'], X, R, w)               # training covariances
+        [Kss, Kstar] = feval(gp['covfunc'], gp['covtheta'], X, R, w, Xstar, Rstar)   # test covariances
 
-    mean_y = 1.*sum(y)/len(y)     
+    ms     = feval(gp['meanfunc'], gp['meantheta'], Xstar)
+    mean_y = feval(gp['meanfunc'], gp['meantheta'], X)
+    
     L = linalg.cholesky(K)                             # cholesky factorization of cov (lower triangular matrix)
     alpha = solve_chol(L.transpose(),y-mean_y)         # compute inv(K)*(y-mean(y))
-    out1 = mean_y + dot(Kstar.transpose(),alpha)       # predicted means
+    fmu   = ms + dot(Kstar.transpose(),alpha)          # predicted means
     v = linalg.solve(L, Kstar)                  
     tmp=v*v                                     
-    out2 = Kss - array([tmp.sum(axis=0)]).transpose()  # predicted variances  
-    out2[out2 < 0.] = 0.                               # Added for numerical stability
-    return [out1, out2]
+    fs2 = Kss - array([tmp.sum(axis=0)]).transpose()  # predicted variances  
+    fs2[fs2 < 0.] = 0.                                # Remove numerical noise i.e. negative variances
+    return [fmu, fs2]
 
 def solve_chol(A,B):
     return linalg.solve(A,linalg.solve(A.transpose(),B))
 
-def nlml(loghyper, covfunc, X, y, R=None, w=None):
+def nlml(theta, gp, X, y, R=None, w=None):
     n = X.shape[0]
+    mt = len(gp['meantheta'])
+
+    meantheta = theta[:mt]
+    covtheta  = theta[mt:]
+
     # compute training set covariance matrix
     if R==None:
-        K = feval(covfunc, loghyper, X)
+        K = feval(gp['covfunc'], covtheta, X)
     else:
-        K = feval(covfunc, loghyper, X, R, w)     
-    mean_y = 1.*sum(y)/len(y)    
+        K = feval(gp['covfunc'], covtheta, X, R, w)     
+
+    ms = feval(gp['meanfunc'], meantheta, X)
+    
     # cholesky factorization of the covariance
     L = linalg.cholesky(K)      # lower triangular matrix
     # compute inv(K)*y
-    alpha = solve_chol(L.transpose(),y-mean_y)
+    alpha = solve_chol(L.transpose(),y-ms)
     # compute the negative log marginal likelihood
-    return ( 0.5*dot((y-mean_y).transpose(),alpha) + (log(diag(L))).sum(axis=0)  + \
-           0.5*n*log(2.*pi) )
+    return ( 0.5*dot((y-ms).transpose(),alpha) + (log(diag(L))).sum(axis=0) + 0.5*n*log(2.*pi) )
 
-def dnlml(loghyper, covfunc, X, y, R=None, w=None):
-    #out = zeros((loghyper.shape))
-    out = zeros(len(loghyper))
-    W = get_W(loghyper, covfunc, X, y, R, w)
+def dnlml(theta, gp, X, y, R=None, w=None):
+    mt = len(gp['meantheta'])
+    ct = len(gp['covtheta'])
+    out = zeros(mt+ct)
+    meantheta = theta[:mt]
+    covtheta  = theta[mt:]
+
+    W = get_W(theta, gp, X, y, R, w)
 
     if R==None:
-        for i in range(0,size(out)):
-            out[i] = (W*feval(covfunc, loghyper, X, i)).sum()/2
+        for i in range(0,len(gp['meantheta'])):
+            out[i] = (W*feval(gp['meanfunc'], meantheta, X, i)).sum()/2.
+        kk = len(gp['meantheta'])
+        for i in range(0,len(gp['covtheta'])):
+            out[i+kk] = (W*feval(gp['covfunc'], covtheta, X, i)).sum()/2.
     else:
-        for i in range(0,size(out)):
-            out[i] = (W*feval(covfunc, loghyper, X, R, w, i)).sum()/2
+        for i in range(0,len(gp['meantheta'])):
+            out[i] = (W*feval(gp['meanfunc'], meantheta, X, R, w, i)).sum()/2.
+        kk = len(gp['meantheta'])
+        for i in range(0,len(gp['covtheta'])):
+            out[i+kk] = (W*feval(gp['covfunc'], covtheta, X, R, w, i)).sum()/2.
  
     return out    
- 
-        
-def get_W(loghyper, covfunc, X, y, R=None, w=None):
+         
+def get_W(theta, gp, X, y, R=None, w=None):
     '''Precompute W for convenience.'''
-    n = X.shape[0]
+    n         = X.shape[0]
+    mt        = len(gp['meantheta'])
+    meantheta = theta[:mt]
+    covtheta  = theta[mt:]
     # compute training set covariance matrix
     if R==None:
-        K = feval(covfunc, loghyper, X)
+        K = feval(gp['covfunc'], covtheta, X)
     else:
-        K = feval(covfunc, loghyper, X, R, w)
-    mean_y = 1.*sum(y)/len(y)
+        K = feval(gp['covfunc'], covtheta, X, R, w)
+    ms    = feval(gp['meanfunc'], meantheta, X)
     # cholesky factorization of the covariance
-    L = linalg.cholesky(K)      # lower triangular matrix
-    alpha = solve_chol(L.transpose(),y-mean_y)
-    W = linalg.solve(L.transpose(),linalg.solve(L,eye(n)))-dot(alpha,alpha.transpose())
+    L     = linalg.cholesky(K)      # lower triangular matrix
+    alpha = solve_chol(L.transpose(),y-ms)
+    W     = linalg.solve(L.transpose(),linalg.solve(L,eye(n)))-dot(alpha,alpha.transpose())
     return W
 

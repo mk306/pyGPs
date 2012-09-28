@@ -30,22 +30,7 @@ Substantial updates by Daniel Marthaler July 2012.
 get_nb_param() added by Marion Neumann (Aug 2012).
 '''
 import numpy as np
-from GPR import kernels
-
-def flatten(l, ltypes=(list, tuple)):
-    ltype = type(l)
-    l = list(l)
-    i = 0
-    while i < len(l):
-        while isinstance(l[i], ltypes):
-            if not l[i]:
-                l.pop(i)
-                i -= 1
-                break
-            else:
-                l[i:i + 1] = l[i]
-        i += 1
-    return ltype(l)
+from GPR import kernels, means
 
 ## NEW 01/08/2012
 def feval(funcName, *args):    
@@ -54,9 +39,16 @@ def feval(funcName, *args):
         # This is a composition
         assert(len(funcName) == 2)
         z = funcName[0]
+
         # Split off the module name (before the period)
         mod,fun = z[0].split('.')
-        return getattr(kernels,fun)(funcName[1],*args)
+
+        if mod == 'kernels':
+            return getattr(kernels,fun)(funcName[1],*args)
+        elif mod == 'means':
+            return getattr(means,fun)(funcName[1],*args)
+        else:
+            raise 'Error in parameter function type'
     else:
         # This is either a singleton call or a call of one of the composed covariances
         z = funcName[0]
@@ -67,7 +59,12 @@ def feval(funcName, *args):
             # This is one called from a composition
             # Call the function, split off the module name (before the period)
             mod,fun = z.split('.')
-    return getattr(kernels,fun)(*args)
+    if mod == 'kernels':
+        return getattr(kernels,fun)(*args)
+    elif mod == 'means':
+        return getattr(means,fun)(*args)
+    else:
+        raise 'Error in parameter function type'
 
 def convert_single(v,D):
     if isinstance(v,str):
@@ -91,7 +88,12 @@ def convert(v,D):
         w = convert_single(v,D)
     return w
 
-def check_hyperparameters(covfunc,logtheta,x):
+def check_hyperparameters(gp,x):
+    check_hyperparameters_func(gp['covfunc'],gp['covtheta'],x)
+    check_hyperparameters_func(gp['meanfunc'],gp['meantheta'],x) 
+    return True
+
+def check_hyperparameters_func(covfunc,logtheta,x):
     [n,D] = x.shape
     ## CHECK (hyper)parameters and covariance function(s)
     if len(covfunc) > 1:
@@ -141,6 +143,21 @@ def get_nb_param(covList, dim):
                         str2num -= current_number
             num_hyp += str2num
     return num_hyp
+
+def flatten(l, ltypes=(list, tuple)):
+    ltype = type(l)
+    l = list(l)
+    i = 0
+    while i < len(l):
+        while isinstance(l[i], ltypes):
+            if not l[i]:
+                l.pop(i)
+                i -= 1
+                break
+            else:
+                l[i:i + 1] = l[i]
+        i += 1
+    return ltype(l)
 
 def get_index_vec(a,b):
     ''' 
