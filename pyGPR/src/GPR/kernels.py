@@ -489,16 +489,16 @@ def covSEiso(loghyper=None, x=None, z=None):
     sf2 = numpy.exp(2*loghyper[1])       # signal variance
 
     x = x/ell 
-    A = -sq_dist(x)/2
+    A = sq_dist(x)/2
 
     if z == None:                        # compute covariance matix for dataset x
-        A = sf2 * numpy.exp(A)
+        A = sf2 * numpy.exp(-A)
 
     elif isinstance(z, int) and z == 0:  # compute derivative matrix wrt 1st parameter
-        A = 2* sf2 * numpy.exp(A) * A
+        A = 2* sf2 * numpy.exp(-A) * A
 
     elif isinstance(z, int) and z == 1:  # compute derivative matrix wrt 2nd parameter
-        A = 2 * sf2 * numpy.exp(A)
+        A = 2 * sf2 * numpy.exp(-A)
 
     else:                                          # compute covariance between data sets x and z
         z = z/ell
