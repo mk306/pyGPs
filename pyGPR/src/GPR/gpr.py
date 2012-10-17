@@ -69,6 +69,7 @@ Created on 31/08/2009
 
 from numpy import linalg, array, dot, zeros, size, log, diag, pi, eye
 from Tools.general import feval
+from scipy.optimize import fmin_bfgs as bfgs
 import minimize
 
 def gp_train(gp, X, y, R=None, w=None):
@@ -82,11 +83,18 @@ def gp_train(gp, X, y, R=None, w=None):
 
     # Build the parameter list that we will optimize
     theta = gp['meantheta'] + gp['covtheta']
-    [theta, fvals, iter] = minimize.run(theta, nlml, dnlml, [gp, X, y, R, w], maxnumfuneval=100)
+    #[theta, fvals, iter] = minimize.run(theta, nlml, dnlml, [gp, X, y, R, w], maxnumfuneval=100)
+    aa = bfgs(nlml, theta, dnlml, [gp,X,y], maxiter=100, disp=False, full_output=True)
+    theta = aa[0]; fvals = aa[1]; gvals = aa[2]; Bopt = aa[3]; funcCalls = aa[4]; gradcalls = aa[5]
+    if aa[6] == 1:
+        print "Maximum number of iterations exceeded." 
+    elif aa[6] ==  2:
+        print "Gradient and/or function calls not changing."
+
     mt = len(gp['meantheta'])
     gp['meantheta'] = list(theta[:mt])
     gp['covtheta']  = list(theta[mt:])
-    return gp, fvals, iter
+    return gp, fvals, gvals, funcCalls
     
 def gp_pred(gp, X, y, Xstar, R=None, w=None, Rstar=None):
     # compute training set covariance matrix (K) and

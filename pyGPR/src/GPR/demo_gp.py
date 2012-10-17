@@ -7,7 +7,7 @@ from matplotlib import pyplot
 
 STATS = True
 TRAIN = True
-PLOT  = False
+PLOT  = True
 
 def convert_ndarray(X):
     x_t = X.flatten()
@@ -27,7 +27,7 @@ covfunc  = [ ['kernels.covSum'], [ ['kernels.covSEiso'],   ['kernels.covNoise'] 
 meanfunc = [ ['means.meanZero'] ]      
 
 ## SET (hyper)parameters
-covtheta = [log(1.0),log(1.1),log(1.0)]
+covtheta = [log(1.0),log(1.1),log(.05)]
 meantheta   = []
 
 # Build the general 'structure' for the problem
@@ -61,12 +61,12 @@ if TRAIN:
         print 'Initial Log marginal likelihood = ',gpr.nlml(theta, gp, X, y)[0]
         print 'Initial gradient: ', gpr.dnlml(theta ,gp, X, y)
     ### TRAINING of (hyper)parameters
-    gp, val, iters = gpr.gp_train(gp, X, y)
+    gp, fvals, gvals, funcCalls = gpr.gp_train(gp, X, y)
     if STATS:
         theta = gp['meantheta'] + gp['covtheta']
-        print 'trained hyperparameters in (',iters,' iterations): ', gp['meantheta'], exp(gp['covtheta'])
-        print 'Log marginal likelihood after optimization = ',gpr.nlml(theta, gp, X, y)[0]
-        print 'Gradient after optimization: ', gpr.dnlml(theta ,gp, X, y)
+        print 'trained hyperparameters in (',funcCalls,' function calls): ', gp['meantheta'], exp(gp['covtheta'])
+        print 'Log marginal likelihood after optimization = ', fvals
+        print 'Gradient after optimization: ', gvals
 
 ## to GET prior covariance of Standard GP use:
 [Kss, Kstar] = general.feval(gp['covfunc'], gp['covtheta'], X, Xstar)    # Kss = self covariances of test cases, 
