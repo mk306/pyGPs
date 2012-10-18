@@ -70,9 +70,10 @@ Created on 31/08/2009
 from numpy import linalg, array, dot, zeros, size, log, diag, pi, eye
 from Tools.general import feval
 from scipy.optimize import fmin_bfgs as bfgs
+from scipy.optimize import fmin_cg as cg
 import minimize
 
-def gp_train(gp, X, y, R=None, w=None):
+def gp_train(gp, X, y, R=None, w=None, CGFlag = False):
     ''' gp_train() returns the learnt hyperparameters.
     Following chapter 5.4.1 in Rasmussen and Williams: GPs for ML (2006).
     The original version (MATLAB implementation) of used optimizer minimize.m 
@@ -83,17 +84,28 @@ def gp_train(gp, X, y, R=None, w=None):
 
     # Build the parameter list that we will optimize
     theta = gp['meantheta'] + gp['covtheta']
-    #[theta, fvals, iter] = minimize.run(theta, nlml, dnlml, [gp, X, y, R, w], maxnumfuneval=100)
-    aa = bfgs(nlml, theta, dnlml, [gp,X,y], maxiter=100, disp=False, full_output=True)
-    theta = aa[0]; fvals = aa[1]; gvals = aa[2]; Bopt = aa[3]; funcCalls = aa[4]; gradcalls = aa[5]
-    if aa[6] == 1:
-        print "Maximum number of iterations exceeded." 
-    elif aa[6] ==  2:
-        print "Gradient and/or function calls not changing."
+    if CGFlag:
+        aa = cg(nlml, theta, dnlml, [gp,X,y,R,w], maxiter=100, disp=False, full_output=True)
+        theta = aa[0]; fvals = aa[1]; funcCalls = aa[2]; gradcalls = aa[3]
+        gvals = dnlml(theta, gp, X, y, R, w)
+        if aa[4] == 1:
+            print "Maximum number of iterations exceeded." 
+        elif aa[4] ==  2:
+            print "Gradient and/or function calls not changing."
+
+    else:
+        # Use BFGS
+        aa = bfgs(nlml, theta, dnlml, [gp,X,y,R,w], maxiter=100, disp=False, full_output=True)
+        theta = aa[0]; fvals = aa[1]; gvals = aa[2]; Bopt = aa[3]; funcCalls = aa[4]; gradcalls = aa[5]
+        if aa[6] == 1:
+            print "Maximum number of iterations exceeded." 
+        elif aa[6] ==  2:
+            print "Gradient and/or function calls not changing."
 
     mt = len(gp['meantheta'])
     gp['meantheta'] = list(theta[:mt])
     gp['covtheta']  = list(theta[mt:])
+
     return gp, fvals, gvals, funcCalls
     
 def gp_pred(gp, X, y, Xstar, R=None, w=None, Rstar=None):
@@ -163,9 +175,8 @@ def dnlml(theta, gp, X, y, R=None, w=None):
             out[i] = (W*feval(gp['meanfunc'], meantheta, X, R, w, i)).sum()/2.
         kk = len(gp['meantheta'])
         for i in range(0,len(gp['covtheta'])):
-            out[i+kk] = (W*feval(gp['covfunc'], covtheta, X, R, w, i)).sum()/2.
- 
-    return out    
+            out[i+kk] = (W*feval(gp['covfunc'], covtheta, X, R, w, i)).sum()/2. 
+    return out
          
 def get_W(theta, gp, X, y, R=None, w=None):
     '''Precompute W for convenience.'''

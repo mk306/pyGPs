@@ -39,7 +39,7 @@ Matlab-function minimize.m
 """
 
 
-from numpy import dot, isinf, isnan, any, sqrt, isreal, real, nan, inf
+from numpy import dot, isinf, isnan, any, sqrt, isreal, real, nan, inf, array
 
 def run(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, verbose=False):
     INT = 0.1;# don't reevaluate within 0.1 of the limit of the current bracket
@@ -56,7 +56,7 @@ def run(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, ve
     #speed up the minimization; it is probably not worth playing much with RHO.
 
     SMALL = 10.**-16 # A small number
-    
+        
     if maxnumlinesearch == None:
         if maxnumfuneval == None:
             raise "Specify maxnumlinesearch or maxnumfuneval"
@@ -69,17 +69,16 @@ def run(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, ve
         else:
             S = 'Linesearch'
             length = maxnumlinesearch
-
+    X = array(X)
     i = 0            # zero the run length counter
     ls_failed = 0    # no previous line search has failed
     f0 = f(X, *args) # get function value and gradient
-    print "Function call: ",f0,X
+  
     df0 = grad(X, *args)
-    print "Gradient call: ",df0
     fX = [f0]
     if length < 0: 
         i = i + 1 # count epochs
-    s = -df0
+    s = -1.*df0
     d0 = -dot(s.T,s) # initial search direction (steepest) and slope
     x3 = red/(1.0-d0) # initial step is red/(|s|+1)
 
@@ -87,14 +86,14 @@ def run(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, ve
         if length > 0: 
             i = i + 1 # count iterations
 
-        X0 = X[:]; F0 = f0[:]; dF0 = df0[:] # make a copy of current values
+        X0 = X[:]; F0 = f0[:]; dF0 = df0[:] # make a copy of intiial values
         if length > 0:
             M = MAX
         else:
             M = min(MAX, -length-i)
-
+        print "M = ",M
         while True: # keep extrapolating as long as necessary
-            x2 = 0; f2 = f0; d2 = d0; f3 = f0; df3 = df0
+            x2 = 0.; f2 = f0; d2 = d0; f3 = f0; df3 = df0
             success = False
             while (not success) and (M > 0):
                 try:
@@ -102,9 +101,7 @@ def run(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, ve
                     if length < 0: 
                         i = i + 1 # count epochs?!
                     f3 = f(X+x3*s, *args)
-                    print "Function call: ",f3,X+x3*s
                     df3 = grad(X+x3*s, *args)
-                    print "Gradient call: ",df0
                     if isnan(f3).any(1) or isinf(f3).any(1) or isnan(df3).any(1) or isinf(df3).any(1):
                         raise "Error. Function returning either inf or nan."
                     success = True
@@ -133,7 +130,7 @@ def run(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, ve
             elif x3 < x2+INT*(x2-x1): # new point too close to previous point?
                 x3 = x2+INT*(x2-x1)
             x3 = real(x3)
-
+        print f3
         while (abs(d3) > -SIG*d0 or f3 > f0+x3*RHO*d0) and M > 0:
             # keep interpolating
             if (d3 > 0) or (f3 > f0+x3*RHO*d0): # choose subinterval
@@ -153,9 +150,7 @@ def run(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, ve
                 x3 = (x2+x4)/2. # if we had a numerical problem then bisect
             x3 = max(min(x3, x4-INT*(x4-x2)),x2+INT*(x4-x2)) # don't accept too close
             f3 = f(X+x3*s, *args)
-            print "Function call: ",f3,X+x3*s
             df3 = grad(X+x3*s, *args)
-            print "Gradient call: ",df0
             if f3 < F0:
                 X0 = X+x3*s; F0 = f3; dF0 = df3 # keep best values
             M = M - 1
