@@ -7,7 +7,7 @@ from matplotlib import pyplot
 
 STATS = True
 TRAIN = True
-PLOT  = True
+PLOT  = False
 
 def convert_ndarray(X):
     x_t = X.flatten()
@@ -61,7 +61,23 @@ if TRAIN:
         print 'Initial Log marginal likelihood = ',gpr.nlml(theta, gp, X, y)[0]
         print 'Initial gradient: ', gpr.dnlml(theta ,gp, X, y)
     ### TRAINING of (hyper)parameters
-    gp, fvals, gvals, funcCalls = gpr.gp_train(gp, X, y)
+    print "BFGS: "
+    gp, fvals, gvals, funcCalls = gpr.gp_train(gp, X, y, CGFlag=False)
+    if STATS:
+        theta = gp['meantheta'] + gp['covtheta']
+        print 'trained hyperparameters in (',funcCalls,' function calls): ', gp['meantheta'], exp(gp['covtheta'])
+        print 'Log marginal likelihood after optimization = ', fvals
+        print 'Gradient after optimization: ', gvals
+
+    print "CG Iteration:"
+    gp['meantheta'] = list(random.random(len(meantheta))) 
+    gp['covtheta']  = list(random.random(len(covtheta)))
+    if STATS:
+        print 'initial hyperparameters: ', gp['meantheta'], gp['covtheta']
+        theta = gp['meantheta'] + gp['covtheta']
+        print 'Initial Log marginal likelihood = ',gpr.nlml(theta, gp, X, y)[0]
+        print 'Initial gradient: ', gpr.dnlml(theta ,gp, X, y)
+    gp, fvals, gvals, funcCalls = gpr.gp_train(gp, X, y, CGFlag=True)
     if STATS:
         theta = gp['meantheta'] + gp['covtheta']
         print 'trained hyperparameters in (',funcCalls,' function calls): ', gp['meantheta'], exp(gp['covtheta'])
