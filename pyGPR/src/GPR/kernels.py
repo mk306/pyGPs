@@ -124,6 +124,36 @@ import Tools
 import numpy
 import math
 
+epsilon = 1e-8
+
+def covMask(covfunc, loghyper=None, x=None, z=None):
+    '''covMask - compose a covariance function as another covariance
+        function (covfunc), but with only a subset of dimensions of x. loghyper here contains
+        the hyperparameters of covfunc. This function doesn't actually compute very much on its own, it
+        merely does some bookkeeping, and calls other covariance functions to do the
+        actual work. '''
+
+    mask = covfunc[0] # The indicies to be masked (should be a list of integers)
+    cov  = covfunc[1]                                 # covariance function to be masked
+
+    if loghyper == None: # report number of parameters
+        A = [Tools.general.feval(covfunc[1])]
+        return A
+
+    n, D = x.shape
+
+    assert(len(mask) < D)
+    assert(max(mask) < D)
+    assert(min(mask) >= 0)
+
+    if z == None:                        # compute covariance matix for dataset x
+        A = Tools.general.feval(cov, loghyper, x[:,mask])
+    elif isinstance(z, int):  
+        A = Tools.general.feval(cov, loghyper, x[:,mask],z)
+    else:                                          # compute covariance between data sets x and z
+        A = Tools.general.feval(cov,loghyper,x[:,mask],z[:,mask])       # cross covariances
+    return A
+
 def covPoly(loghyper=None, x=None, z=None):
     '''Polynomial covariance function 
     The covariance function is parameterized as:
@@ -139,7 +169,7 @@ def covPoly(loghyper=None, x=None, z=None):
         return 3
 
     c   = numpy.exp(loghyper[0])          # inhomogeneous offset
-    sf2 = numpy.exp(2*loghyper[1])        # signal variance
+    sf2 = numpy.exp(2.*loghyper[1])        # signal variance
     ord = numpy.exp(loghyper[2])          # ord of polynomical
 
     if numpy.abs(ord-numpy.round(ord)) < 1e-8:  # remove numerical error from format of parameter
@@ -150,7 +180,7 @@ def covPoly(loghyper=None, x=None, z=None):
 
     n, D = x.shape
 
-    A = numpy.dot(x,x.T) + 1e-6*numpy.eye(n)
+    A = numpy.dot(x,x.T) + 1.e-6*numpy.eye(n)
 
     if z == None:                        # compute covariance matix for dataset x
         A = sf2 * (c + A)**ord
@@ -162,7 +192,7 @@ def covPoly(loghyper=None, x=None, z=None):
         A = 2. * sf2 * (c + A)**ord
 
     elif isinstance(z,int) and z == 2:  # Wants to compute derivative wrt order 
-        pass # Do nothing                   
+        A = numpy.zeros_like(A)
     else:                                  # compute covariance between data sets x and z
         A = sf2*numpy.ones((z.shape[0],1)) # self covariances (needed for GPR)
         B = sf2*numpy.dot(x,z.T)           # cross covariances
@@ -190,11 +220,11 @@ def covPPiso(loghyper=None, x=None, z=None):
         if v == 0:
             return 1
         elif v == 1:
-            return ( 1 + (j+1) * r )
+            return ( 1. + (j+1) * r )
         elif v == 2:
-            return ( 1 + (j+2)*r + (j*j + 4.*j+ 3)/3.*r*r )
+            return ( 1. + (j+2)*r + (j*j + 4.*j+ 3)/3.*r*r )
         elif v == 3:
-            return (  1 + (j+3)*r + (6.*j*j+36.*j+45.)/15.*r*r + (j*j*j+9.*j*j+23.*j+15.)/15.*r*r*r )
+            return ( 1. + (j+3)*r + (6.*j*j+36.*j+45.)/15.*r*r + (j*j*j+9.*j*j+23.*j+15.)/15.*r*r*r )
         else:
              print (['Wrong degree in covPPiso.  Should be 0,1,2 or 3, is ' + str(v)])
 
@@ -219,8 +249,8 @@ def covPPiso(loghyper=None, x=None, z=None):
     if loghyper == None:                 # report number of parameters
         return 3
 
-    ell = numpy.exp(loghyper[0])         # characteristic length scale
-    sf2 = numpy.exp(2*loghyper[1])       # signal variance
+    ell = numpy.exp(loghyper[0]) + epsilon         # characteristic length scale
+    sf2 = numpy.exp(2.*loghyper[1])       # signal variance
     v   = numpy.exp(loghyper[2])         # degree (v = 0,1,2 or 3 only)
 
     if numpy.abs(v-numpy.round(v)) < 1e-8:     # remove numerical error from format of parameter
@@ -246,7 +276,7 @@ def covPPiso(loghyper=None, x=None, z=None):
         A = 2. * sf2 * pp(A,j,v,func)
 
     elif isinstance(z, int) and z == 2:  # Wants to compute derivative wrt order
-        pass # Do nothing
+        A = numpyzeros_like(A)
 
     else:                                          # compute covariance between data sets x and z
         z = z/ell
@@ -267,7 +297,7 @@ def covConst(loghyper=None, x=None, z=None):
     if loghyper == None:                 # report number of parameters
         return 1
 
-    sf2 = numpy.exp(2*loghyper[0])       # s2
+    sf2 = numpy.exp(2.*loghyper[0])       # s2
 
     n,m = x.shape
     A = sf2 * numpy.ones((n,n))
@@ -372,7 +402,7 @@ def covLINard(loghyper=None, x=None, z=None):
         return 'D + 0'                    # USAGE: integer OR D_+_int (spaces are SIGNIFICANT)
 
     n, D = x.shape
-    ell_ = 1/numpy.exp(loghyper)*numpy.eye(n) # characteristic length scales
+    ell_ = 1/numpy.exp(loghyper)*numpy.eye(n) + epsilon # characteristic length scales
 
     x_ = numpy.dot(ell_,x)
     A = None
@@ -414,7 +444,7 @@ def covMatern(loghyper=None, x=None, z=None):
         elif d == 5:
             return 1 + t*(1+t/3.)
         else:
-            error('Wrong value for d in covMater')
+            raise Exception("Wrong value for d in covMatern")
 
     def dfunc(d,t):
         if d == 1:
@@ -424,7 +454,7 @@ def covMatern(loghyper=None, x=None, z=None):
         elif d == 5:
             return t*(1+t/3.)
         else:
-            error('Wrong value for d in covMater')
+            raise Exception("Wrong value for d in covMatern")
 
     def mfunc(d,t):
         return func(d,t)*numpy.exp(-1.*t)
@@ -435,8 +465,8 @@ def covMatern(loghyper=None, x=None, z=None):
     if loghyper == None:                 # report number of parameters
         return 3
 
-    ell = numpy.exp(loghyper[0])         # characteristic length scale
-    sf2 = numpy.exp(2*loghyper[1])       # signal variance
+    ell = numpy.exp(loghyper[0]) + epsilon         # characteristic length scale
+    sf2 = numpy.exp(2.*loghyper[1])       # signal variance
     d   = numpy.exp(loghyper[2])         # 2 times nu
 
     if numpy.abs(d-numpy.round(d)) < 1e-8:     # remove numerical error from format of parameter
@@ -458,14 +488,14 @@ def covMatern(loghyper=None, x=None, z=None):
         A = 2 * sf2 * mfunc(d,A)
 
     elif isinstance(z, int) and z == 2:  # Wants to compute derivative wrt nu
-        pass # Do nothing
+        A = numpy.zeros_like(A) # Do nothing
 
     else:                                          # compute covariance between data sets x and z
         z = numpy.sqrt(d)*z/ell
         print z.shape
         A = sf2*numpy.ones((z.shape[0],1))         # self covariances (needed for GPR)
         K = numpy.sqrt(sq_dist(x,z))
-        B = sf2 * (1. + K ) * numpy.exp(-K)        # cross covariances
+        B = sf2 * mfunc(d,K)        # cross covariances
         A=[A,B]
 
     return A
@@ -483,27 +513,29 @@ def covSEiso(loghyper=None, x=None, z=None):
     a column vector  
     each row of x/z is a data point'''
 
+
     if loghyper == None:                 # report number of parameters
         return 2
-    ell = numpy.exp(loghyper[0])         # characteristic length scale
-    sf2 = numpy.exp(2*loghyper[1])       # signal variance
+
+    ell = numpy.exp(loghyper[0]) + epsilon         # characteristic length scale
+    sf2 = numpy.exp(2.*loghyper[1])       # signal variance
 
     x = x/ell 
-    A = sq_dist(x)/2
+    A = 0.5*sq_dist(x)
 
     if z == None:                        # compute covariance matix for dataset x
         A = sf2 * numpy.exp(-A)
 
     elif isinstance(z, int) and z == 0:  # compute derivative matrix wrt 1st parameter
-        A = 2* sf2 * numpy.exp(-A) * A
+        A = 2.* sf2 * numpy.exp(-A) * A
 
     elif isinstance(z, int) and z == 1:  # compute derivative matrix wrt 2nd parameter
-        A = 2 * sf2 * numpy.exp(-A)
+        A = 2. * sf2 * numpy.exp(-A)
 
     else:                                          # compute covariance between data sets x and z
         z = z/ell
         A = sf2*numpy.ones((z.shape[0],1))         # self covariances (needed for GPR)
-        B = sf2*numpy.exp(-sq_dist(x,z)/2)         # cross covariances
+        B = sf2*numpy.exp(-0.5*sq_dist(x,z))       # cross covariances
         A=[A,B]
     return A
 
@@ -527,24 +559,24 @@ def covSEard(loghyper=None, x=None, z=None):
         return 'D + 1'                  # USAGE: integer OR D_+_int (spaces are SIGNIFICANT)
     
     [n, D] = x.shape
-    ell = 1/numpy.exp(loghyper[0:D])    # characteristic length scale
-    sf2 = numpy.exp(2*loghyper[D])      # signal variance
+    ell = 1/numpy.exp(loghyper[0:D]) + epsilon    # characteristic length scale
+    sf2 = numpy.exp(2.*loghyper[D])      # signal variance
 
     x_ = numpy.dot(numpy.diag(ell),x.transpose()).transpose()
     A = None
     if z == None:                          # compute covariance matix for dataset x
-        A = sf2*numpy.exp(-sq_dist(x_)/2)             
+        A = sf2*numpy.exp(-0.5*sq_dist(x_))             
     elif isinstance(z, int) and z < D:      # compute derivative matrix wrt length scale parameters
-        A = sf2*numpy.exp(-sq_dist(x_)/2) * sq_dist((numpy.array([x[:,z]])*ell[z]).transpose()) 
+        A = sf2*numpy.exp(-0.5*sq_dist(x_)) * sq_dist((numpy.array([x[:,z]])*ell[z]).transpose()) 
         # NOTE: ell = 1/exp(loghyper) AND sq_dist is written for the transposed input!!!!
 
     elif isinstance(z, int) and z==D:      # compute derivative matrix wrt magnitude parameter
-        A = 2*sf2*numpy.exp(-sq_dist(x_)/2)
+        A = 2.*sf2*numpy.exp(-0.5*sq_dist(x_))
 
     else:                                           # compute covariance between data sets x and z
         A = sf2*numpy.ones((z.shape[0],1))          # self covariances
         z = numpy.dot(numpy.diag(ell),z.transpose()).transpose()   
-        B = sf2 * numpy.exp(-sq_dist(x_,z)/2)       # cross covariances
+        B = sf2 * numpy.exp(-0.5*sq_dist(x_,z))       # cross covariances
         A = [A,B]
     return A
 
@@ -561,10 +593,10 @@ def covSEisoU(loghyper=None, x=None, z=None):
     if loghyper == None:                 # report number of parameters
         return 1
 
-    ell = numpy.exp(loghyper[0])         # characteristic length scale
+    ell = numpy.exp(loghyper[0]) + epsilon         # characteristic length scale
 
     x = x/ell 
-    A = -sq_dist(x)/2.
+    A = -0.5*sq_dist(x)
 
     if z == None:                        # compute covariance matix for dataset x
         A = numpy.exp(A)
@@ -575,7 +607,7 @@ def covSEisoU(loghyper=None, x=None, z=None):
     else:                                      # compute covariance between data sets x and z
         z = z/ell
         A = numpy.ones((z.shape[0],1))         # self covariances (needed for GPR)
-        B = numpy.exp(-sq_dist(x,z)/2)         # cross covariances
+        B = numpy.exp(-0.5*sq_dist(x,z))         # cross covariances
         A = [A,B]
     return A
 
@@ -593,8 +625,8 @@ def covPeriodic(loghyper=None, x=None, z=None):
     if loghyper == None:                 # report number of parameters
         return 3
 
-    ell = numpy.exp(loghyper[0])         # characteristic length scale
-    p   = numpy.exp(loghyper[1])         # period
+    ell = numpy.exp(loghyper[0]) + epsilon         # characteristic length scale
+    p   = numpy.exp(loghyper[1]) + epsilon        # period
     sf2 = numpy.exp(2.*loghyper[2])      # signal variance
 
     A = numpy.pi*numpy.sqrt(sq_dist(x))/p
@@ -643,9 +675,9 @@ def covRQiso(loghyper=None, x=None, z=None):
     if loghyper == None:                   # report number of parameters
         return 3
 
-    ell   = numpy.exp(loghyper[0])         # characteristic length scale
-    sf2   = numpy.exp(2*loghyper[1])       # signal variance
-    alpha = numpy.exp(loghyper[2])         # 
+    ell   = numpy.exp(loghyper[0]) + epsilon        # characteristic length scale
+    sf2   = numpy.exp(2.*loghyper[1])       # signal variance
+    alpha = numpy.exp(loghyper[2]) + epsilon         # 
 
     x = x/ell 
     A = sq_dist(x)
@@ -690,9 +722,9 @@ def covRQard(loghyper=None, x=None, z=None):
         return 'D + 2'                  # USAGE: integer OR D_+_int (spaces are SIGNIFICANT)
     
     [n, D] = x.shape
-    ell = 1/numpy.exp(loghyper[0:D])    # characteristic length scale
-    sf2 = numpy.exp(2*loghyper[D])      # signal variance
-    alpha = numpy.exp(loghyper[D+1])
+    ell = 1/numpy.exp(loghyper[0:D]) + epsilon   # characteristic length scale
+    sf2 = numpy.exp(2.*loghyper[D])      # signal variance
+    alpha = numpy.exp(loghyper[D+1]) + epsilon
 
     x_ = numpy.dot(numpy.diag(ell),x.transpose()).transpose()
     A = sq_dist(x_)
@@ -729,12 +761,12 @@ def covNoise(loghyper=None, x=None, z=None):
     if loghyper == None:                         # report number of parameters
         return 1
     
-    s2 = numpy.exp(2*loghyper[0])                # noise variance
+    s2 = numpy.exp(2.*loghyper[0])                # noise variance
     A = None
     if z == None:                                # compute covariance matix for dataset x
         A = s2*numpy.eye(x.shape[0])      
     elif isinstance(z, int):                     # compute derivative matrix
-        A = 2*s2*numpy.eye(x.shape[0])
+        A = 2.*s2*numpy.eye(x.shape[0])
     else:                                        # compute covariance between data sets x and z      
         A = s2*numpy.ones((z.shape[0],1))        # self covariances
         B = numpy.zeros((x.shape[0],z.shape[0])) # zeros cross covariance by independence
@@ -754,88 +786,86 @@ def covMatrix(R_=None, Rstar_=None):
     A = None
     if Rstar_==None:                               # trainings set covariances
         A = R_
-    elif isinstance(Rstar_, int):                  # derivative matrix (not needed here!!)                             
-        print 'error: NO optimization to be made in covfunc (CV is done seperatly)'
+    elif isinstance(Rstar_, int):  # derivative matrix (not needed here!!)                             
+        raise Exception("Error: NO optimization to be made in covfunc (CV is done seperatly)")
     else:                                          # test set covariances  
         A = numpy.array([Rstar_[-1,]]).transpose() # self covariances for the test cases (last row) 
         B = Rstar_[0:Rstar_.shape[0]-1,:]          # cross covariances for trainings and test cases
         A = [A,B]
     return A    
 
-def covSum(covfunc, loghyper=None, x=None, z=None):    
+def covSum(covfunc, loghyper=None, x=None, z=None):
     '''covSum - compose a covariance function as the sum of other covariance
-    functions. This function doesn't actually compute very much on its own, it
-    merely does some bookkeeping, and calls other covariance functions to do the
-    actual work. '''
+        functions. This function doesn't actually compute very much on its own, it
+        merely does some bookkeeping, and calls other covariance functions to do the
+        actual work. '''
 
-    if loghyper == None:    # report number of parameters
+    def DetermineNumberOfParameters(v,no_param):
+        if isinstance(no_param, int):
+            v.append(no_param)
+        elif isinstance(no_param,str): # no_param is a string
+            pram_str = no_param.split(' ')
+            if pram_str[0]=='D': temp = int(D)
+            if pram_str[1]=='+': temp += int(pram_str[2])
+            elif pram_str[1]=='-': temp -= int(pram_str[2])
+            else:
+                raise Exception(["Error: number of parameters of "+covfunc[i] +" unknown!"])
+            v.append(temp)
+        elif isinstance(no_param, list):
+            # The number of hyperparameters for this piece of covfunc is the sum
+            # of all of them in this composition
+            temp = [0]
+            for jj in xrange(len(no_param)):
+                DetermineNumberOfParameters(temp,no_param[jj])
+            v.append(sum(temp))
+        else:
+            # This is an error, we should never be here
+            raise Exception("Error in return of number of parameters")
+        return v
+    
+    if loghyper == None: # report number of parameters
         A = [Tools.general.feval(covfunc[0])]
         for i in range(1,len(covfunc)):
             A.append(Tools.general.feval(covfunc[i]))
         return A
-
+    
     [n, D] = x.shape
- 
-    # SET vector v (v indicates how many parameters each covfunc has 
+    
+    # SET vector v (v indicates how many parameters each covfunc has
     # (NOTE : v[i]=number of parameters + 1 -> this is because of the indexing of python!))
-
-    v = [0]    # needed for technical reasons         
+    
+    v = [0] # needed for technical reasons
     for ii in range(1,len(covfunc)+1):
         no_param = Tools.general.feval(covfunc[ii-1])
-        if isinstance(no_param, int):
-            v.append(no_param)
-        elif isinstance(no_param, list):
-            # The number of hyperparameters for this piece of covfunc is the sum
-            # of all of them in this composition
-            temp = 0
-            for jj in xrange(len(no_param)):
-                if isinstance(no_param[jj],int):
-                    temp += no_param[jj]
-                else: # no_param[jj] is a string
-                    pram_str = no_param[jj].split(' ')
-                    if pram_str[0]=='D':    temp1 = int(D)
-                    if pram_str[1]=='+':    temp1 += int(pram_str[2])    
-                    elif pram_str[1]=='-':  temp1 -= int(pram_str[2])
-                    else: 
-                        print 'error: number of parameters of '+covfunc[i] +' unknown!'
-                    temp += temp1     
-            v.append(temp)
-        else:   # no_param is a string
-            pram_str = no_param.split(' ')
-            if pram_str[0]=='D':    temp = int(D)
-            if pram_str[1]=='+':    temp += int(pram_str[2])    
-            elif pram_str[1]=='-':  temp -= int(pram_str[2])
-            else: 
-                print 'error: number of parameters of '+covfunc[i] +' unknown!'
-            v.append(temp)     
+        DetermineNumberOfParameters(v,no_param)
 
-    if z == None:                           # compute covariance matrix
-        A = numpy.zeros((n, n))             # allocate space for covariance matrix
-        for i in range(1,len(covfunc)+1):   # iteration over summand functions
+    if z == None: # compute covariance matrix
+        A = numpy.zeros((n, n)) # allocate space for covariance matrix
+        for i in range(1,len(covfunc)+1): # iteration over summand functions
             f = covfunc[i-1]
-            A = A + Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x)  # accumulate covariances
-           
-    elif isinstance(z, int):                # compute derivative matrices   
-        tmp = 0                                                                                  
-        for i in range(1,len(covfunc)+1): 
+            A = A + Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x) # accumulate covariances
+    
+    elif isinstance(z, int): # compute derivative matrices
+        tmp = 0
+        for i in range(1,len(covfunc)+1):
             tmp += v[i]
             if z<tmp:
-                j = z-(tmp-v[i]); break     # j: which parameter in that covariance
-        f = covfunc[i-1]                    # i: which covariance function
+                j = z-(tmp-v[i]); break # j: which parameter in that covariance
+        f = covfunc[i-1] # i: which covariance function
         # compute derivative
-        A = Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x, int(j)) 
-            
-    else:                                   # compute test set covariances
-        A = numpy.zeros((z.shape[0],1))     # allocate space
+        A = Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x, int(j))
+    
+    else: # compute test set covariances
+        A = numpy.zeros((z.shape[0],1)) # allocate space
         B = numpy.zeros((n,z.shape[0]))
         for i in range(1,len(covfunc)+1):
-            f = covfunc[i-1] 
+            f = covfunc[i-1]
             # compute test covariances
-            results = Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x, z) 
+            results = Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x, z)
             # and accumulate
-            A = A + results[0]    # self covariances 
-            B = B + results[1]    # cross covariances        
-        A = [A,B] 
+            A = A + results[0] # self covariances
+            B = B + results[1] # cross covariances
+        A = [A,B]
     return A
 
 def covProd(covfunc, loghyper=None, x=None, z=None):    
@@ -844,10 +874,33 @@ def covProd(covfunc, loghyper=None, x=None, z=None):
     merely does some bookkeeping, and calls other covariance functions to do the
     actual work. '''
 
+    def DetermineNumberOfParameters(v,no_param):
+        if isinstance(no_param, int):
+            v.append(no_param)
+        elif isinstance(no_param,str): # no_param is a string
+            pram_str = no_param.split(' ')
+            if pram_str[0]=='D': temp = int(D)
+            if pram_str[1]=='+': temp += int(pram_str[2])
+            elif pram_str[1]=='-': temp -= int(pram_str[2])
+            else:
+                raise Exception(["Error: number of parameters of "+covfunc[i] +" unknown!"])
+            v.append(temp)
+        elif isinstance(no_param, list):
+            # The number of hyperparameters for this piece of covfunc is the sum
+            # of all of them in this composition
+            temp = [0]
+            for jj in xrange(len(no_param)):
+                DetermineNumberOfParameters(temp,no_param[jj])
+            v.append(sum(temp))
+        else:
+            # This is an error, we should never be here
+            raise Exception("Error in return of number of parameters")
+        return v
+
     if loghyper == None:    # report number of parameters
         A = [Tools.general.feval(covfunc[0])]
-        for i in range(1,len(covfunc)):
-            A.append(Tools.general.feval(covfunc[i]))
+        for ii in range(1,len(covfunc)):
+            A.append(Tools.general.feval(covfunc[ii]))
         return A
 
     [n, D] = x.shape
@@ -855,65 +908,42 @@ def covProd(covfunc, loghyper=None, x=None, z=None):
     # SET vector v (v indicates how many parameters each covfunc has 
     # (NOTE : v[i]=number of parameters + 1 -> this is because of the indexing of python!))
     v = [0]
-    for i in range(1,len(covfunc)+1):
-        no_param = Tools.general.feval(covfunc[i-1])  
-        if isinstance(no_param, int):
-            v.append(no_param)
-        elif isinstance(no_param, list):
-            # The number of hyperparameters for this piece of covfunc is the sum
-            # of all of them in this composition
-            temp = 0
-            for jj in xrange(len(no_param)):
-                if isinstance(no_param[jj],int):
-                    temp += no_param[jj]
-                else: # no_param[jj] is a string
-                    pram_str = no_param[jj].split(' ')
-                    if pram_str[0]=='D':    temp1 = int(D)
-                    if pram_str[1]=='+':    temp1 += int(pram_str[2])    
-                    elif pram_str[1]=='-':  temp1 -= int(pram_str[2])
-                    else: 
-                        print 'error: number of parameters of '+covfunc[i] +' unknown!'
-                    temp += temp1     
-            v.append(temp)
-        else:   # no_param is a string
-            pram_str = no_param.split(' ')
-            if pram_str[0]=='D':    temp = int(D)
-            if pram_str[1]=='+':    temp+= int(pram_str[2])    
-            elif pram_str[1]=='-':  temp-= int(pram_str[2])
-            else: 
-                print 'error: number of parameters of '+covfunc[i] +' unknown!'
-            v.append(temp)     
-          
+    for ii in range(1,len(covfunc)+1):
+        no_param = Tools.general.feval(covfunc[ii-1])
+        DetermineNumberOfParameters(v,no_param)  
+
     if z == None:                          # compute covariance matrix
         A = numpy.ones((n, n))             # allocate space for covariance matrix
-        for i in range(1,len(covfunc)+1):  # iteration over multiplicand functions
-            f = covfunc[i-1]
-            A *= Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x)  # accumulate covariances
+        for ii in range(1,len(covfunc)+1):  # iteration over multiplicand functions
+            f = covfunc[ii-1]
+            s = sum(v[0:ii])
+            A *= Tools.general.feval(f, loghyper[s:(s+v[ii])], x)  # accumulate covariances
            
     elif isinstance(z, int):               # compute derivative matrices   
         tmp = 0                                                                                  
         A = numpy.ones((n, n))             # allocate space for covariance matrix
         flag = True
-        for i in range(1,len(covfunc)+1): 
-            tmp += v[i]
+        for ii in range(1,len(covfunc)+1): 
+            tmp += v[ii]
             if z<tmp and flag:
                 flag = False                
-                j = z-(tmp-v[i])                    # j: which parameter in that covariance
-                f = covfunc[i-1]                    # i: which covariance function
+                jj = z-(tmp-v[ii])                    # j: which parameter in that covariance
+                f = covfunc[ii-1]                    # i: which covariance function
                 # compute derivative
-                A *= Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x, int(j))  
+                s = sum(v[0:ii])
+                A *= Tools.general.feval(f, loghyper[s:(s+v[ii])], x, int(jj))  
             else:                
-                f = covfunc[i-1]                    # i: which covariance function
-                A *= Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x)  
+                f = covfunc[ii-1]                    # ii: which covariance function
+                s = sum(v[0:ii])
+                A *= Tools.general.feval(f, loghyper[s:(s+v[ii])], x)  
             
     else:                                           # compute test set covariances
         A = numpy.ones((z.shape[0],1))              # allocate space
         B = numpy.ones((n,z.shape[0]))
-        for i in range(1,len(covfunc)+1):
-            f = covfunc[i-1] 
-            ## TODO: doiuble-check this!!
-            # compute test covariances
-            results = Tools.general.feval(f, loghyper[sum(v[0:i]):sum(v[0:i])+v[i]], x, z)  
+        for ii in range(1,len(covfunc)+1):
+            f = covfunc[ii-1] 
+            s = sum(v[0:ii])
+            results = Tools.general.feval(f, loghyper[s:(s+v[ii])], x, z)  
             # and accumulate
             A = A * results[0]    # self covariances 
             B = B * results[1]    # cross covariances        
@@ -957,5 +987,4 @@ def sq_dist(a, b=None):
         tem = numpy.kron(numpy.ones((1,m)), tt)
         tem = tem - numpy.kron(numpy.ones((n,1)), b[d,:])
         C = C + tem * tem  
-
     return C
