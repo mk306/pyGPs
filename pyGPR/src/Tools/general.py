@@ -90,25 +90,31 @@ def convert(v,D):
 
 def check_hyperparameters(gp,x):
     check_hyperparameters_func(gp['covfunc'],gp['covtheta'],x)
-    check_hyperparameters_func(gp['meanfunc'],gp['meantheta'],x) 
+    check_hyperparameters_func(gp['meanfunc'],gp['meantheta'],x,Flag=True) 
     return True
 
-def check_hyperparameters_func(covfunc,logtheta,x):
+def check_hyperparameters_func(func,logtheta,x,Flag=False):
     [n,D] = x.shape
     ## CHECK (hyper)parameters and covariance function(s)
-    if len(covfunc) > 1:
+    if len(func) > 1:
         try:
-            v = flatten(feval(covfunc))
+            v = flatten(feval(func))
             assert( sum(convert(v,D)) - len(logtheta) == 0 )
         except AssertionError:
-            print 'ERROR: number of hyperparameters does not match given covariance function:', sum(convert(v,D)), 'hyperparameters needed (', len(logtheta), 'given )!'
+            if Flag:
+                print 'ERROR: number of hyperparameters does not match given mean function:', sum(convert(v,D)), 'hyperparameters needed (', len(logtheta), 'given )!'
+            else:
+                print 'ERROR: number of hyperparameters does not match given covariance function:', sum(convert(v,D)), 'hyperparameters needed (', len(logtheta), 'given )!'
             exit()
     else:
         try:
-            v = feval(covfunc)
+            v = feval(func)
             assert( convert(v,D) - len(logtheta) == 0)
         except AssertionError:
-            print 'ERROR: number of hyperparameters does not match given covariance function:', convert(v,D), 'hyperparameters needed (', len(logtheta), 'given )!'
+            if Flag:
+                print 'ERROR: number of hyperparameters does not match given mean function:', convert(v,D), 'hyperparameters needed (', len(logtheta), 'given )!'
+            else:
+                print 'ERROR: number of hyperparameters does not match given covariance function:', convert(v,D), 'hyperparameters needed (', len(logtheta), 'given )!'
             exit()
     return True
 

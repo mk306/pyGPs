@@ -33,7 +33,7 @@ Demo_XGP: Relational GP (XGP) to demonstrate prediction (and training) for gener
 
 from GPR import gpr, kernels
 from Tools import general, validation
-from numpy import *
+import numpy as np
 from matplotlib import pyplot
 
 # DATA:
@@ -44,13 +44,13 @@ l = 20      # number of labeled/training data
 u = 201     # number of unlabeled/test data
 
 ### GENERATE ATTRIBUTES (here: one-dimensional)
-X = array(15*(random.random((l,1))-0.5))
-X = msort(X)
+X = np.array(15*(np.random.random((l,1))-0.5))
+X = np.msort(X)
 ### GENERATE id vector
-id_lab = array([arange(1,l+1)]).transpose()
+id_lab = np.array([np.arange(1,l+1)]).transpose()
 
 ### GENERATE RELATIONS ([weighted] adjacency matrix of relational graph)
-R = random.binomial(1,0.1,[l+u,l+u])    # generate sparse adjacency matrix    
+R = np.random.binomial(1,0.1,[l+u,l+u])    # generate sparse adjacency matrix    
 R = R + R.transpose()                   # force symmetry
 
 ### CREATE covariance matrix based on relations 
@@ -69,29 +69,36 @@ K_R = kernels.regLapKernel(R, beta, s2)
           
 A = K_R[0:l, 0:l]                       # cov matrix for labeled (i.e. training) data (needed to tune weight w)
 B = K_R[0:l, l:l+u]                     # cov matrix between labeled and unlabeled data (needed to do xgp prediction)
-d = diag(K_R[l:l+u,l:l+u]).transpose()  # self convariances for unlabeled data (needed in kernels.covMatrix)
-B = vstack((B, d))
+d = np.diag(K_R[l:l+u,l:l+u]).transpose()  # self convariances for unlabeled data (needed in kernels.covMatrix)
+B = np.vstack((B, d))
 
 ## SET COVARIANCE FUNCTION
-covfunc = ['kernels.covSumMat', ['kernels.covSEiso','kernels.covNoise','kernels.covMatrix']]  # covMatrix -> no hyperparameters to optimize!!
 covfunc = [['kernels.covSumMat'], [['kernels.covSEiso'],['kernels.covNoise'],['kernels.covMatrix']]]  # covMatrix -> no hyperparameters to optimize!!
 
+## SET MEAN FUNCTION
+meanfunc = [ ['means.meanZero'] ]
 
 ## SET (hyper)parameters, e.g.:
-#logtheta = array([log(0.3), log(1.08), log(5e-5)])
-#logtheta = array([log(3), log(1.16), log(0.89)])
-logtheta = array([log(1), log(1), log(sqrt(0.01))])
+covtheta = np.array([np.log(1.), np.log(1.), np.log(np.sqrt(0.01))])
 
+meantheta   = np.array([])
 
-w_used = round(random.random(),1)
+# Build the general 'structure' for the problem
+gp = {'covfunc':covfunc, 'meanfunc':meanfunc, 'covtheta':covtheta, 'meantheta':meantheta}
+
+## CHECK (hyper)parameters and covariance function(s)
+general.check_hyperparameters(gp,X)
+
+z = general.feval(gp['meanfunc'],gp['meantheta'], X)
+
+w_used = np.round(np.random.random(),1)
 print 'generated mixture weight: ', w_used
 
 ### GENERATE sample observations from the XGP 
-y = dot(linalg.cholesky(general.feval(covfunc, logtheta, X, A, w_used)).transpose(),random.standard_normal((l,1)))
+y = np.dot(np.linalg.cholesky(general.feval(covfunc, logtheta, X, A, w_used)).transpose(),np.random.standard_normal((l,1))) + z
+
 ### TEST POINTS
-Xstar = array([linspace(-7.5,7.5,u)]).transpose()   # u test points evenly distributed in the interval [-7.5, 7.5]
-
-
+Xstar = np.array([np.linspace(-7.5,7.5,u)]).transpose()   # u test points evenly distributed in the interval [-7.5, 7.5]
 
 #_________________________________
 ## Relational GP (XGP)
@@ -101,11 +108,11 @@ Xstar = array([linspace(-7.5,7.5,u)]).transpose()   # u test points evenly distr
 ## INITIALIZE (hyper)parameters by -1
 #d = X.shape[1]
 #init = -1*ones((d,1))
-#loghyper = array([[-1], [-1]])
+#loghyper = np.array([[-1], [-1]])
 #loghyper = vstack((init, loghyper))[:,0]
 #print 'initial hyperparameters: ', exp(loghyper)
 #
-#w = array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])  # set vector for grid search
+#w = np.array([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])  # set vector for grid search
 #M = zeros((size(w),3+size(loghyper)))  # matrix to collect[r_sq_B, RMSE_B, MAE_B] for all weights w(i)
 #print 'XGP: ...training (PT)'
 #print 'XGP: ...tune weight parameter w (via CV)'
@@ -116,13 +123,13 @@ Xstar = array([linspace(-7.5,7.5,u)]).transpose()   # u test points evenly distr
 #loc = M[:,0].argmax(0)  
 #w_used = w[loc]
 #print 'selected weight: '+str(w_used)
-#logtheta = array(M[loc,3:])
+#logtheta = np.array(M[loc,3:])
 
 
 
 # XGP PREDICTION  
 print 'XGP: ...prediction (PT)'
-[MU, S2] = gpr.gp_pred(logtheta, covfunc, X, y, Xstar, A, w_used, B)
+[MU, S2] = gpr.gp_pred(gp, X, y, Xstar, A, w_used, B)
 
 #print MU
 
