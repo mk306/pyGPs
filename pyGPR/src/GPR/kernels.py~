@@ -857,7 +857,7 @@ def covNoise(loghyper=None, x=None, z=None, der=None):
         A = np.eye(n)
     else:                                        # compute covariance between data sets x and z
         M = sq_dist(x,z)
-        A = np.zeros_like(M,dtype=np.float)
+        A = np.zeros_like(Z,dtype=np.float)
         A[M < tol] = 1.
 
     if der == None:

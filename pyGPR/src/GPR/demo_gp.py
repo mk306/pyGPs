@@ -1,7 +1,7 @@
 import kernels
 import means
 from GPR import gpr
-from Tools import general
+from Tools import general, nearPD
 from numpy import array, random, sqrt, log, exp, dot, linalg, linspace, concatenate, tile, ravel, meshgrid, reshape
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -20,22 +20,22 @@ def convert_ndarray(X):
     return array(x_p)
 
 ## GENERATE data from a noisy GP
-l = 20      # number of labeled/training data 
+l = 21      # number of labeled/training data 
 u = 201     # number of unlabeled/test data
-D = 2       # Dimension of input data
+D = 1       # Dimension of input data
 X = array(15*(random.random((l,D))-0.5))
 
-## DEFINE parameterized covariance function
-covfunc = [ ['kernels.covProd'], [ [['kernels.covMask'], [[0], ['kernels.covMatern']]],['kernels.covMatern']]]
+## DEFINE parameterized crodovariance function
+covfunc = [ ['kernels.covSum'], [ ['kernels.covSEiso'], ['kernels.covPeriodic'], ['kernels.covNoise'] ] ]
 
-#meanfunc = [ ['means.meanProd'], [ ['means.meanOne'], ['means.meanLinear'] ] ]       
-meanfunc = [ ['means.meanZero'] ]      
+meanfunc = [ ['means.meanProd'], [ ['means.meanOne'], ['means.meanLinear'] ] ]       
+#meanfunc = [ ['means.meanZero'] ]      
 
 ## SET (hyper)parameters
-covtheta = array([log(1.0),log(1.1),log(3.0),log(1.0),log(1.1),log(5.0)])
+covtheta = array([log(1.1),log(1.1),log(3.0),log(.05),log(1.0),log(.05)])
 
-#meantheta   = array([log(2.0),log(2.0)])
-meantheta   = array([])
+meantheta   = array([log(2.0)])
+#meantheta   = array([])
 
 # Build the general 'structure' for the problem
 gp = {'covfunc':covfunc, 'meanfunc':meanfunc, 'covtheta':covtheta, 'meantheta':meantheta}
@@ -44,21 +44,19 @@ gp = {'covfunc':covfunc, 'meanfunc':meanfunc, 'covtheta':covtheta, 'meantheta':m
 general.check_hyperparameters(gp,X) 
 
 z = general.feval(gp['meanfunc'],gp['meantheta'], X)
+A = general.feval(gp['covfunc'],gp['covtheta'], X)
 
 ### GENERATE sample observations from the GP
-y = dot(linalg.cholesky(general.feval(gp['covfunc'],gp['covtheta'], X)).transpose(),random.standard_normal((l,1))) + z
-
+y = dot(linalg.cholesky(nearPD.nearPD(A)).T,random.standard_normal((l,1))) + z
 #_________________________________
 # STANDARD GP:
-
 # ***UNCOMMENT THE FOLLOWING LINES TO DO TRAINING OF HYPERPARAMETERS***
 ### TRAINING GP
 if TRAIN_BFGS:
     print 'GP: ...training'
     ### INITIALIZE (hyper)parameters
-    gp['meantheta'] = meantheta + .01*random.random(len(meantheta)) 
-    gp['covtheta']  = covtheta + .01*random.random(len(covtheta))
-    gp['covtheta'][2]  = covtheta[2]
+    gp['meantheta'] = meantheta + .01*(2.*random.random(len(meantheta)) -1.)
+    gp['covtheta']  = covtheta  + .01*(2.*random.random(len(covtheta)) - 1.)
     if STATS:
         print 'True hyperparameters: ', meantheta, covtheta
         print 'initial hyperparameters: ', gp['meantheta'], gp['covtheta']
@@ -89,7 +87,7 @@ if TRAIN_CG:
         print 'trained hyperparameters in (',funcCalls,' function calls): ', gp['meantheta'], exp(gp['covtheta'])
         print 'Log marginal likelihood after optimization = ', fvals
         print 'Gradient after CG optimization: ', gvals
-    
+
 ## PREDICTION 
 ## Plot results
 if PLOT:
@@ -97,7 +95,7 @@ if PLOT:
     ### TEST POINTS
     Flag = True
     if D == 1:
-        Xstar = array([linspace(-7.5,7.5,u)]).transpose() # u test points evenly distributed in the interval [-7.5, 7.5]
+        Xstar = array([linspace(-7.5,7.5,u)]).T # u test points evenly distributed in the interval [-7.5, 7.5]
     elif D == 2:
         v = linspace(-7.5,7.5,u) # u test points evenly distributed in the interval [-7.5, 7.5]
         v = reshape( v, (len(v),1) )
@@ -107,8 +105,6 @@ if PLOT:
     else:
         print "Too many dimensions to plot!"
         Flag = False
-    # to GET prior covariance of Standard GP use:
-    #[Kss, Kstar] = general.feval(gp['covfunc'], gp['covtheta'], X, Xstar)    # Kss = self covariances of test cases, Kstar = cov between train and test cases
     if Flag:
         result = gpr.gp_pred(gp, X, y, Xstar) # get predictions for unlabeled data ONLY
         MU = result[0]

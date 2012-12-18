@@ -1,5 +1,5 @@
 import Tools
-import numpy as np
+import numpy
 import math
 
 def meanConst(meanhyper=None, x=None, der=None):
@@ -17,11 +17,11 @@ def meanConst(meanhyper=None, x=None, der=None):
     c = meanhyper;
 
     if der == None:                            # evaluate mean
-        A = c*np.ones((n,1)) 
+        A = c*numpy.ones((n,1)) 
     elif isinstance(der, int) and der == 0:      # compute derivative vector wrt c
-        A = np.ones((n,1)) 
+        A = numpy.ones((n,1)) 
     else:   
-        A = np.zeros((n,1)) 
+        A = numpy.zeros((n,1)) 
     return A
 
 def meanLinear(meanhyper=None, x=None, der=None):
@@ -40,15 +40,15 @@ def meanLinear(meanhyper=None, x=None, der=None):
         return 'D + 0'
     n, D = x.shape
 
-    c = np.array(meanhyper)
-    c = np.reshape(c,(len(c),1))
+    c = numpy.array(meanhyper)
+    c = numpy.reshape(c,(len(c),1))
 
     if der == None:                            # evaluate mean
-        A = np.dot(x,c)
+        A = numpy.dot(x,c)
     elif isinstance(der, int) and der < D:      # compute derivative vector wrt meanparameters
-        A = np.reshape(x[:,der], (len(x[:,der]),1) ) 
+        A = numpy.reshape(x[:,der], (len(x[:,der]),1) ) 
     else:   
-        A = np.zeros((n,1)) 
+        A = numpy.zeros((n,1)) 
     return A
 
 def meanOne(meanhyper=None, x=None, der=None):
@@ -64,9 +64,9 @@ def meanOne(meanhyper=None, x=None, der=None):
     n,D = x.shape
 
     if der == None:                            # evaluate mean
-        A = np.ones((n,1)) 
+        A = numpy.ones((n,1)) 
     else:   
-        A = np.zeros((n,1))
+        A = numpy.zeros((n,1))
     return A
 
 def meanZero(meanhyper=None, x=None, der=None):
@@ -78,7 +78,7 @@ def meanZero(meanhyper=None, x=None, der=None):
     if meanhyper == None:                     # report number of parameters
         return 0
     n, D = x.shape
-    A = np.zeros((n,1)) 
+    A = numpy.zeros((n,1)) 
     return A
 
 def meanProd(meanfunc, meanhyper=None, x=None, der=None):
@@ -133,7 +133,7 @@ def meanProd(meanfunc, meanhyper=None, x=None, der=None):
         DetermineNumberOfParameters(v,no_param)
 
     if der == None:                          # compute mean vector
-        A = np.ones((n, 1))             # allocate space for mean vector
+        A = numpy.ones((n, 1))             # allocate space for mean vector
         for ii in range(1,len(meanfunc)+1): # iteration over multiplicand functions
             f = meanfunc[ii-1]
             B = Tools.general.feval(f,meanhyper[sum(v[0:ii]):sum(v[0:ii])+v[ii]], x)  # accumulate means
@@ -141,7 +141,7 @@ def meanProd(meanfunc, meanhyper=None, x=None, der=None):
 
     elif isinstance(der, int):               # compute derivative vector   
         tmp = 0
-        A = np.ones((n, 1))             # allocate space for derivative vector
+        A = numpy.ones((n, 1))             # allocate space for derivative vector
         flag = True
         for ii in range(1,len(meanfunc)+1):
             tmp += v[ii]
@@ -157,7 +157,7 @@ def meanProd(meanfunc, meanhyper=None, x=None, der=None):
                 s = sum(v[0:ii])
                 A *= Tools.general.feval(f, meanhyper[s:(s+v[ii])], x)
     else:                            
-        A = np.zeros((n,1))
+        A = numpy.zeros((n,1))
     return A
 
 def meanSum(meanfunc, meanhyper=None, x=None, der=None):
@@ -207,7 +207,7 @@ def meanSum(meanfunc, meanhyper=None, x=None, der=None):
         DetermineNumberOfParameters(v,no_param)
 
     if der == None:                           # compute mean vector
-        A = np.zeros((n, 1))             # allocate space for mean vector
+        A = numpy.zeros((n, 1))             # allocate space for mean vector
         for ii in range(1,len(meanfunc)+1):   # iteration over summand functions
             f = meanfunc[ii-1]
             s = sum(v[0:ii])
@@ -225,7 +225,7 @@ def meanSum(meanfunc, meanhyper=None, x=None, der=None):
         A = A + Tools.general.feval(f, meanhyper[s:(s+v[ii])], x, int(jj))  # accumulate means
 
     else:                                   # compute test set means
-        A = np.zeros((n,1))
+        A = numpy.zeros((n,1))
     return A
 
 def meanScale(meanfunc, meanhyper=None, x=None, der=None):
@@ -273,7 +273,7 @@ def meanPow(meanfunc, meanhyper=None, x=None, der=None):
         A.append( Tools.general.feval(meanfunc[0]) )
         return A
 
-    d = np.abs(np.floor(meanhyper[0])) 
+    d = numpy.abs(numpy.floor(meanhyper[0])) 
     d = max(d,1)
 
     if der == None:            # compute mean vector
