@@ -7,10 +7,12 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import mpl_toolkits.mplot3d.axes3d as plt3
 
-STATS      = True
-TRAIN_BFGS = True
-TRAIN_CG   = False
-PLOT       = True
+T = True
+F = False
+STATS      = T
+TRAIN_BFGS = T
+TRAIN_CG   = F
+PLOT       = T
 
 def convert_ndarray(X):
     x_t = X.flatten()
@@ -35,13 +37,14 @@ covfunc = [ ['kernels.covSum'], [ ['kernels.covSEiso'],['kernels.covNoise'] ] ]
 covfuncF = [ ['kernels.covFITC'], covfunc, u]
 
 #meanfunc = [ ['means.meanProd'], [ ['means.meanOne'], ['means.meanLinear'] ] ]       
-meanfunc = [ ['means.meanZero'] ]      
+#meanfunc = [ ['means.meanZero'] ]      
+meanfunc = [ ['means.meanAPS'] ]      
 
 ## SET (hyper)parameters
 covtheta = array([log(1.1),log(1.2),log(.5)])
 
-#meantheta   = array([log(2.0),log(2.0)])
-meantheta   = array([])
+meantheta   = array([0.7,1.3])
+#meantheta   = array([])
 
 # Build the general 'structure' for the problem
 gp = {'covfunc':covfuncF, 'meanfunc':meanfunc, 'covtheta':covtheta, 'meantheta':meantheta}
@@ -64,8 +67,8 @@ except linalg.linalg.LinAlgError:
 if TRAIN_BFGS:
     print 'GP: ...training'
     ### INITIALIZE (hyper)parameters
-    gp['meantheta'] = meantheta + .1*random.random(len(meantheta)) 
-    gp['covtheta']  = covtheta  + .1*random.random(len(covtheta))
+    gp['meantheta'] = meantheta + .01*random.random(len(meantheta)) 
+    gp['covtheta']  = covtheta  + .01*random.random(len(covtheta))
     if STATS:
         print 'True hyperparameters: ', meantheta, covtheta
         print 'initial hyperparameters: ', gp['meantheta'], gp['covtheta']
