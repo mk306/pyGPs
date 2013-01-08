@@ -48,7 +48,7 @@ def feval(funcName, *args):
         elif mod == 'means':
             return getattr(means,fun)(funcName[1],*args)
         else:
-            raise 'Error in parameter function type'
+            raise Exception("Error in parameter function type")
     else:
         # This is either a singleton call or a call of one of the composed covariances
         z = funcName[0]
@@ -64,7 +64,7 @@ def feval(funcName, *args):
     elif mod == 'means':
         return getattr(means,fun)(*args)
     else:
-        raise 'Error in parameter function type'
+        raise Exception("Error in parameter function type")
 
 def convert_single(v,D):
     if isinstance(v,str):
@@ -73,8 +73,7 @@ def convert_single(v,D):
         if pram_str[1]=='+':    temp += int(pram_str[2])
         elif pram_str[1]=='-':  temp -= int(pram_str[2])
         else:
-            print 'ERROR: string representation is incorrect for this covariance'
-            exit()
+            raise Exception("ERROR: string representation is incorrect for this covariance")
     else:
         temp = v
     return temp
@@ -90,26 +89,37 @@ def convert(v,D):
 
 def check_hyperparameters(gp,x):
     check_hyperparameters_func(gp['covfunc'],gp['covtheta'],x)
-    check_hyperparameters_func(gp['meanfunc'],gp['meantheta'],x) 
+    check_hyperparameters_func(gp['meanfunc'],gp['meantheta'],x,meanFlag=True) 
     return True
 
-def check_hyperparameters_func(covfunc,logtheta,x):
+def check_hyperparameters_func(func,logtheta,x,meanFlag=False):
     [n,D] = x.shape
-    ## CHECK (hyper)parameters and covariance function(s)
-    if len(covfunc) > 1:
+    if not meanFlag:
+        if func[0][0] == 'kernels.covFITC':
+            # This is an FITC approximation
+            func = func[1:-1]
+            xu   = func[-1]
+            if len(func) == 1:
+                func = func[0]
+    ## CHECK (hyper)parameters and mean/covariance function(s)
+    if len(func) > 1:
+        v = flatten(feval(func))
         try:
-            v = flatten(feval(covfunc))
             assert( sum(convert(v,D)) - len(logtheta) == 0 )
         except AssertionError:
-            print 'ERROR: number of hyperparameters does not match given covariance function:', sum(convert(v,D)), 'hyperparameters needed (', len(logtheta), 'given )!'
-            exit()
+            if meanFlag:
+                raise Exception('ERROR: number of hyperparameters does not match given mean function:' + str(sum(convert(v,D))) + ' hyperparameters needed (' + str(len(logtheta)) + ' given )!')
+            else:
+                raise Exception('ERROR: number of hyperparameters does not match given covariance function:'+ str(sum(convert(v,D))) + ' hyperparameters needed (' + str(len(logtheta)) + ' given )!')
     else:
         try:
-            v = feval(covfunc)
+            v = feval(func)
             assert( convert(v,D) - len(logtheta) == 0)
         except AssertionError:
-            print 'ERROR: number of hyperparameters does not match given covariance function:', convert(v,D), 'hyperparameters needed (', len(logtheta), 'given )!'
-            exit()
+            if meanFlag:
+                raise Exception("ERROR: number of hyperparameters does not match given mean function: "+ str(convert(v,D)) + " hyperparameters needed ("+ str(len(logtheta)) + " given )!")
+            else:
+                raise Exception("ERROR: number of hyperparameters does not match given covariance function: "+ str(convert(v,D)) + " hyperparameters needed ("+ str(len(logtheta)) + " given )!")
     return True
 
 def get_nb_param(covList, dim):
@@ -135,7 +145,7 @@ def get_nb_param(covList, dim):
                         elif str_list[j] == '+':
                             add = True
                         else:
-                            print 'ERROR: Not able to identify number of required hyperparameters!'
+                            raise Exception( "ERROR: Not able to identify number of required hyperparameters!")
                             return
                     if add:
                         str2num += current_number

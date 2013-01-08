@@ -1,8 +1,8 @@
 import Tools
-import numpy
+import numpy as np
 import math
 
-def meanConst(meanhyper=None, x=None, z=None):
+def meanConst(meanhyper=None, x=None, der=None):
     ''' 
     Constant mean function. The mean function is parameterized as:
       m(x) = c
@@ -16,15 +16,15 @@ def meanConst(meanhyper=None, x=None, z=None):
     n,D = x.shape
     c = meanhyper;
 
-    if z == None:                            # evaluate mean
-        A = c*numpy.ones((n,1)) 
-    elif isinstance(z, int) and z == 0:      # compute derivative vector wrt c
-        A = numpy.ones((n,1)) 
+    if der == None:                            # evaluate mean
+        A = c*np.ones((n,1)) 
+    elif isinstance(der, int) and der == 0:      # compute derivative vector wrt c
+        A = np.ones((n,1)) 
     else:   
-        A = numpy.zeros((n,1)) 
+        A = np.zeros((n,1)) 
     return A
 
-def meanLinear(meanhyper=None, x=None, z=None):
+def meanLinear(meanhyper=None, x=None, der=None):
     ''' 
     Linear mean function. The mean function is parameterized as:
       m(x) = sum_i ai * x_i 
@@ -40,17 +40,18 @@ def meanLinear(meanhyper=None, x=None, z=None):
         return 'D + 0'
     n, D = x.shape
 
-    c = numpy.array(meanhyper)
-    c = numpy.reshape(c,(len(c),1))
-    if z == None:                            # evaluate mean
-        A = numpy.dot(x,c.T)
-    elif isinstance(z, int) and z < D:      # compute derivative vector wrt meanparameters
-        A = x[:,z] 
+    c = np.array(meanhyper)
+    c = np.reshape(c,(len(c),1))
+
+    if der == None:                            # evaluate mean
+        A = np.dot(x,c)
+    elif isinstance(der, int) and der < D:      # compute derivative vector wrt meanparameters
+        A = np.reshape(x[:,der], (len(x[:,der]),1) ) 
     else:   
-        A = numpy.zeros((n,1)) 
+        A = np.zeros((n,1)) 
     return A
 
-def meanOne(meanhyper=None, x=None, z=None):
+def meanOne(meanhyper=None, x=None, der=None):
     ''' 
     One mean function. The mean function does not have any parameters
       m(x) = 1
@@ -62,38 +63,64 @@ def meanOne(meanhyper=None, x=None, z=None):
 
     n,D = x.shape
 
-    if z == None:                            # evaluate mean
-        A = numpy.ones((n,1)) 
+    if der == None:                            # evaluate mean
+        A = np.ones((n,1)) 
     else:   
-        A = numpy.zeros((n,1)) 
+        A = np.zeros((n,1))
     return A
 
-def meanZero(meanhyper=None, x=None, z=None):
+def meanZero(meanhyper=None, x=None, der=None):
     ''' 
     Zero mean function. The mean function does not have any parameters
       m(x) = 1
     
     '''
-
     if meanhyper == None:                     # report number of parameters
         return 0
-
     n, D = x.shape
-
-    A = numpy.zeros((n,1)) 
+    A = np.zeros((n,1)) 
     return A
 
-def meanProd(meanfunc, meanhyper=None, x=None, z=None):
+def meanProd(meanfunc, meanhyper=None, x=None, der=None):
     ''' meanProd - compose a mean function as the product of other mean
      functions. This function doesn't actually compute very much on its own, it
      merely does some bookkeeping, and calls other mean functions to do the
      actual work. 
     '''
+    
+    def DetermineNumberOfParameters(v,no_param):
+        if isinstance(no_param, int):
+            v.append(no_param)
+        elif isinstance(no_param,str): # no_param is a string
+            pram_str = no_param.split(' ')
+            if pram_str[0]=='D': temp = int(D)
+            if pram_str[1]=='+': temp += int(pram_str[2])
+            elif pram_str[1]=='-': temp -= int(pram_str[2])
+            else:
+                raise Exception(["Error: number of parameters of "+meanfunc[i] +" unknown!"])
+            v.append(temp)
+        elif isinstance(no_param, list):
+            # The number of hyperparameters for this piece of meanfunc is the sum
+            # of all of them in this composition
+            temp = [0]
+            for jj in xrange(len(no_param)):
+                DetermineNumberOfParameters(temp,no_param[jj])
+            v.append(sum(temp))
+        else:
+            # This is an error, we should never be here
+            raise Exception("Error in return of number of parameters")
+        return v
+    
+    if meanhyper == None:    # report number of parameters
+        A = [Tools.general.feval(meanfunc[0])]
+        for ii in range(1,len(meanfunc)):
+            A.append(Tools.general.feval(meanfunc[ii]))
+        return A
 
     if meanhyper == None:    # report number of parameters
         A = [Tools.general.feval(meanfunc[0])]
-        for i in range(1,len(meanfunc)):
-            A.append(Tools.general.feval(meanfunc[i]))
+        for ii in range(1,len(meanfunc)):
+            A.append(Tools.general.feval(meanfunc[ii]))
         return A
 
     [n, D] = x.shape
@@ -101,129 +128,107 @@ def meanProd(meanfunc, meanhyper=None, x=None, z=None):
     # SET vector v (v indicates how many parameters each meanfunc has 
     # (NOTE : v[i]=number of parameters + 1 -> this is because of the indexing of python!))
     v = [0]
-    for i in range(1,len(meanfunc)+1):
-        no_param = Tools.general.feval(meanfunc[i-1])
-        if isinstance(no_param, int):
-            v.append(no_param)
-        elif isinstance(no_param, list):
-            # The number of hyperparameters for this piece of meanfunc is the sum
-            # of all of them in this composition
-            temp = 0
-            for jj in xrange(len(no_param)):
-                if isinstance(no_param[jj],int):
-                    temp += no_param[jj]
-                else: # no_param[jj] is a string
-                    pram_str = no_param[jj].split(' ')
-                    if pram_str[0]=='D':    temp1 = int(D)
-                    if pram_str[1]=='+':    temp1 += int(pram_str[2])
-                    elif pram_str[1]=='-':  temp1 -= int(pram_str[2])
-                    else:
-                        print 'error: number of parameters of '+meanfunc[i] +' unknown!'
-                    temp += temp1
-            v.append(temp)
-        else:   # no_param is a string
-            pram_str = no_param.split(' ')
-            if pram_str[0]=='D':    temp = int(D)
-            if pram_str[1]=='+':    temp+= int(pram_str[2])
-            elif pram_str[1]=='-':  temp-= int(pram_str[2])
-            else:
-                print 'error: number of parameters of '+meanfunc[i] +' unknown!'
-            v.append(temp)
+    for ii in range(1,len(meanfunc)+1):
+        no_param = Tools.general.feval(meanfunc[ii-1])
+        DetermineNumberOfParameters(v,no_param)
 
-    if z == None:                          # compute mean vector
-        A = numpy.ones((n, 1))             # allocate space for mean vector
-        for i in range(1,len(meanfunc)+1): # iteration over multiplicand functions
-            f = meanfunc[i-1]
-            A *= Tools.general.feval(f,meanhyper[sum(v[0:i]):sum(v[0:i])+v[i]], x)  # accumulate meanss
+    if der == None:                          # compute mean vector
+        A = np.ones((n, 1))             # allocate space for mean vector
+        for ii in range(1,len(meanfunc)+1): # iteration over multiplicand functions
+            f = meanfunc[ii-1]
+            B = Tools.general.feval(f,meanhyper[sum(v[0:ii]):sum(v[0:ii])+v[ii]], x)  # accumulate means
+            A *= B
 
-    elif isinstance(z, int):               # compute derivative vector   
+    elif isinstance(der, int):               # compute derivative vector   
         tmp = 0
-        A = numpy.ones((n, 1))             # allocate space for derivative vector
+        A = np.ones((n, 1))             # allocate space for derivative vector
         flag = True
-        for i in range(1,len(meanfunc)+1):
-            tmp += v[i]
-            if z<tmp and flag:
+        for ii in range(1,len(meanfunc)+1):
+            tmp += v[ii]
+            if der<tmp and flag:
                 flag = False
-                f = meanfunc[i-1]                   # i: which mean function
-                j = z-(tmp-v[i])                    # j: which parameter in that mean
+                f = meanfunc[ii-1]                   # i: which mean function
+                jj = der-(tmp-v[ii])                 # j: which parameter in that mean
                 # compute derivative
-                A *= Tools.general.feval(f, meanhyper[sum(v[0:i]):sum(v[0:i])+v[i]], x, int(j))
+                s = sum(v[0:ii])
+                A *= Tools.general.feval(f, meanhyper[s:(s+v[ii])], x, int(jj))
             else:
-                f = meanfunc[i-1]                    # i: which mean function
-                A *= Tools.general.feval(f, meanhyper[sum(v[0:i]):sum(v[0:i])+v[i]], x)
-
+                f = meanfunc[ii-1]                    # i: which mean function
+                s = sum(v[0:ii])
+                A *= Tools.general.feval(f, meanhyper[s:(s+v[ii])], x)
     else:                            
-        A = numpy.zeros((n,1))
+        A = np.zeros((n,1))
     return A
 
-def meanSum(meanfunc, meanhyper=None, x=None, z=None):
+def meanSum(meanfunc, meanhyper=None, x=None, der=None):
     '''covSum - compose a mean function as the sum of other mean
     functions. This function doesn't actually compute very much on its own, it
     merely does some bookkeeping, and calls other mean functions to do the
     actual work. '''
+    
+    def DetermineNumberOfParameters(v,no_param):
+        if isinstance(no_param, int):
+            v.append(no_param)
+        elif isinstance(no_param,str): # no_param is a string
+            pram_str = no_param.split(' ')
+            if pram_str[0]=='D': temp = int(D)
+            if pram_str[1]=='+': temp += int(pram_str[2])
+            elif pram_str[1]=='-': temp -= int(pram_str[2])
+            else:
+                raise Exception(["Error: number of parameters of "+meanfunc[i] +" unknown!"])
+            v.append(temp)
+        elif isinstance(no_param, list):
+            # The number of hyperparameters for this piece of meanfunc is the sum
+            # of all of them in this composition
+            temp = [0]
+            for jj in xrange(len(no_param)):
+                DetermineNumberOfParameters(temp,no_param[jj])
+            v.append(sum(temp))
+        else:
+            # This is an error, we should never be here
+            raise Exception("Error in return of number of parameters")
+        return v
 
     if meanhyper == None:    # report number of parameters
         A = [Tools.general.feval(meanfunc[0])]
-        for i in range(1,len(meanfunc)):
-            A.append(Tools.general.feval(meanfunc[i]))
+        for ii in range(1,len(meanfunc)):
+            A.append(Tools.general.feval(meanfunc[ii]))
         return A
 
     [n, D] = x.shape
 
     # SET vector v (v indicates how many parameters each meanfunc has 
     # (NOTE : v[i]=number of parameters + 1 -> this is because of the indexing of python!))
+    
 
-    v = [0]    # needed for technical reasons         
+    v = [0]    # needed for technical reasons
     for ii in range(1,len(meanfunc)+1):
         no_param = Tools.general.feval(meanfunc[ii-1])
-        if isinstance(no_param, int):
-            v.append(no_param)
-        elif isinstance(no_param, list):
-            # The number of hyperparameters for this piece of meanfunc is the sum
-            # of all of them in this composition
-            temp = 0
-            for jj in xrange(len(no_param)):
-                if isinstance(no_param[jj],int):
-                    temp += no_param[jj]
-                else: # no_param[jj] is a string
-                    pram_str = no_param[jj].split(' ')
-                    if pram_str[0]=='D':    temp1 = int(D)
-                    if pram_str[1]=='+':    temp1 += int(pram_str[2])
-                    elif pram_str[1]=='-':  temp1 -= int(pram_str[2])
-                    else:
-                        print 'error: number of parameters of '+meanfunc[i] +' unknown!'
-                    temp += temp1
-            v.append(temp)
-        else:   # no_param is a string
-            pram_str = no_param.split(' ')
-            if pram_str[0]=='D':    temp = int(D)
-            if pram_str[1]=='+':    temp += int(pram_str[2])
-            elif pram_str[1]=='-':  temp -= int(pram_str[2])
-            else:
-                print 'error: number of parameters of '+meanfunc[i] +' unknown!'
-            v.append(temp)
+        DetermineNumberOfParameters(v,no_param)
 
-    if z == None:                           # compute mean vector
-        A = numpy.zeros((n, 1))             # allocate space for mean vector
-        for i in range(1,len(meanfunc)+1):   # iteration over summand functions
-            f = meanfunc[i-1]
-            A = A + Tools.general.feval(f, meanhyper[sum(v[0:i]):sum(v[0:i])+v[i]], x)  # accumulate means
+    if der == None:                           # compute mean vector
+        A = np.zeros((n, 1))             # allocate space for mean vector
+        for ii in range(1,len(meanfunc)+1):   # iteration over summand functions
+            f = meanfunc[ii-1]
+            s = sum(v[0:ii])
+            A = A + Tools.general.feval(f, meanhyper[s:(s+v[ii])], x)  # accumulate means
 
-    elif isinstance(z, int):                # compute derivative vector
+    elif isinstance(der, int):                # compute derivative vector
         tmp = 0
-        for i in range(1,len(meanfunc)+1):
-            tmp += v[i]
-            if z<tmp:
-                j = z-(tmp-v[i]); break     # j: which parameter in that mean
-        f = meanfunc[i-1]                    # i: which mean function
+        for ii in range(1,len(meanfunc)+1):
+            tmp += v[ii]
+            if der<tmp:
+                jj = der-(tmp-v[ii]); break   # j: which parameter in that mean
+        f = meanfunc[ii-1]                    # i: which mean function
         # compute derivative
-        A = Tools.general.feval(f, meanhyper[sum(v[0:i]):sum(v[0:i])+v[i]], x, int(j))
+        s = sum(v[0:ii])
+        A = A + Tools.general.feval(f, meanhyper[s:(s+v[ii])], x, int(jj))  # accumulate means
 
     else:                                   # compute test set means
-        A = numpy.zeros((n,1))
+        A = np.zeros((n,1))
     return A
 
-def meanScale(meanfunc, meanhyper=None, x=None, z=None):
+def meanScale(meanfunc, meanhyper=None, x=None, der=None):
     '''Compose a mean function as a scaled version of another one
     k(x^p,x^q) = sf2 * k0(x^p,x^q)
     
@@ -242,20 +247,20 @@ def meanScale(meanfunc, meanhyper=None, x=None, z=None):
 
     c = meanhyper[0]         # scale parameter
 
-    if z == None:            # compute mean vector
+    if der == None:            # compute mean vector
         f = meanfunc[0]
         A = c * Tools.general.feval(f, meanhyper[1:], x)  # accumulate means
 
-    elif isinstance(z, int) and z == 0:                # compute derivative w.r.t. c
+    elif isinstance(der, int) and der == 0:                # compute derivative w.r.t. c
         f = meanfunc[0]
         A = Tools.general.feval(f, meanhyper[1:], x)
 
     else:                                   
         f = meanfunc[0]
-        A = c * Tools.general.feval(f, meanhyper[1:], x, z-1)
+        A = c * Tools.general.feval(f, meanhyper[1:], x, None, der-1)
     return A
 
-def meanPow(meanfunc, meanhyper=None, x=None, z=None):
+def meanPow(meanfunc, meanhyper=None, x=None, der=None):
     '''Compose a mean function as the power of another one
       m(x) = m0(x) ** d
     
@@ -268,18 +273,15 @@ def meanPow(meanfunc, meanhyper=None, x=None, z=None):
         A.append( Tools.general.feval(meanfunc[0]) )
         return A
 
-    d = meanhyper[0]         # degree
-    if numpy.abs(d-numpy.round(d)) < 1e-8:     # remove numerical error from format of parameter
-        d = int(round(d))
-    assert(d == int(d) and d > 0)           # Only allowed degrees > 0
-    d = int(d)
+    d = np.abs(np.floor(meanhyper[0])) 
+    d = max(d,1)
 
-    if z == None:            # compute mean vector
+    if der == None:            # compute mean vector
         f = meanfunc[0]
-        A = ( Tools.general.feval(f, meanhyper[1:], x) )** d  # accumulate means
+        A = ( Tools.general.feval(f, meanhyper[1:], x) )**d  # accumulate means
 
     else:                # compute derivative vector
         f = meanfunc[0]
         A = d * (Tools.general.feval(f, meanhyper[1:], x))**(d-1) \
-                * Tools.general.feval(f, meanhyper[1:], x, z-1)
+                * Tools.general.feval(f, meanhyper[1:], x, None, der-1)
     return A
