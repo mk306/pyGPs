@@ -60,8 +60,6 @@
     - box-bound the search space, so that minimize doesn't head off to
       crazily large or small values. Even better, do MAP rather than ML.
     
-    
-
 @author: Marion Neumann (last update 08/01/10)
 '''
 import numpy as np
@@ -69,11 +67,13 @@ from Tools.general import feval
 from Tools.nearPD import nearPD
 from scipy.optimize import fmin_bfgs as bfgs
 from scipy.optimize import fmin_cg as cg
-import minimize
+import minimize, scg
 
 import matplotlib.pyplot as plt
 
-def gp_train(gp, X, y, R=None, w=None, CGFlag = False):
+sn2 = 1e-6 #Hardcoded noise for Gaussian inference
+
+def gp_train(gp, X, y, R=None, w=None, Flag = None):
     ''' gp_train() returns the learnt hyperparameters.
     Following chapter 5.4.1 in Rasmussen and Williams: GPs for ML (2006).
     The original version (MATLAB implementation) of used optimizer minimize.m 
@@ -84,7 +84,7 @@ def gp_train(gp, X, y, R=None, w=None, CGFlag = False):
 
     # Build the parameter list that we will optimize
     theta = np.concatenate((gp['meantheta'],gp['covtheta']))
-    if CGFlag:
+    if Flag == 'CG':
         aa = cg(nlml, theta, dnlml, [gp,X,y,R,w], maxiter=100, disp=False, full_output=True)
         theta = aa[0]; fvals = aa[1]; funcCalls = aa[2]; gradcalls = aa[3]
         gvals = dnlml(theta, gp, X, y, R, w)
@@ -92,22 +92,31 @@ def gp_train(gp, X, y, R=None, w=None, CGFlag = False):
             print "Maximum number of iterations exceeded." 
         elif aa[4] ==  2:
             print "Gradient and/or function calls not changing."
-
-    else:
+        mt = len(gp['meantheta'])
+        gp['meantheta'] = theta[:mt]
+        gp['covtheta']  = theta[mt:]
+        return gp, fvals, gvals, funcCalls
+    elif Flag == 'BFGS':
         # Use BFGS
         #aa = bfgs(nlml, theta, dnlml, [gp,X,y,R,w], maxiter=100, disp=False, full_output=True)
-        aa = bfgs(nlml, theta, dnlml, [gp,X,y,R,w], maxiter=1000, disp=True, full_output=True)
+        aa = bfgs(nlml, theta, dnlml, [gp,X,y,R,w], maxiter=100, disp=True, full_output=True)
         theta = aa[0]; fvals = aa[1]; gvals = aa[2]; Bopt = aa[3]; funcCalls = aa[4]; gradcalls = aa[5]
         if aa[6] == 1:
             print "Maximum number of iterations exceeded." 
         elif aa[6] ==  2:
             print "Gradient and/or function calls not changing."
-
-    mt = len(gp['meantheta'])
-    gp['meantheta'] = theta[:mt]
-    gp['covtheta']  = theta[mt:]
-
-    return gp, fvals, gvals, funcCalls
+        mt = len(gp['meantheta'])
+        gp['meantheta'] = theta[:mt]
+        gp['covtheta']  = theta[mt:]
+        return gp, fvals, gvals, funcCalls
+    elif Flag == 'SCG':
+        theta, listF = scg.scg(theta, nlml, dnlml, [gp,X,y,R,w], niters = 100)
+        mt = len(gp['meantheta'])
+        gp['meantheta'] = theta[:mt]
+        gp['covtheta']  = theta[mt:]
+        return gp, listF 
+    else:
+        raise Exception("Need to specify a method for optimization in gp_train")
 
 def infExact(gp, X, y, Xstar, R=None, w=None, Rstar=None):
     # Exact inference for a GP with Gaussian likelihood. Compute a parametrization
@@ -125,16 +134,19 @@ def infExact(gp, X, y, Xstar, R=None, w=None, Rstar=None):
     
     ms     = feval(gp['meanfunc'], gp['meantheta'], Xstar)
     mean_y = feval(gp['meanfunc'], gp['meantheta'], X)
-    try:
-        L = np.linalg.cholesky(K)                         # cholesky factorization of cov (lower triangular matrix)
-    except linalg.linalg.LinAlgError:
-        L = np.linalg.cholesky(nearPD(K))                 # Find the "Nearest" covariance mattrix to K and do cholesky on that'
 
-    alpha = solve_chol(L.T,y-mean_y)         # compute inv(K)*(y-mean(y))
-    fmu   = ms + np.dot(Kstar.T,alpha)          # predicted means
-    v = np.linalg.solve(L, Kstar)
-    tmp=v*v
-    fs2 = Kss - np.array([tmp.sum(axis=0)]).T  # predicted variances
+    K += sn2*np.eye(X.shape[0])            # Hardcoded noise
+
+    try:
+        L = np.linalg.cholesky(K)          # cholesky factorization of cov (lower triangular matrix)
+    except linalg.linalg.LinAlgError:
+        L = np.linalg.cholesky(nearPD(K))  # Find the "Nearest" covariance mattrix to K and do cholesky on that'
+
+    alpha = solve_chol(L.T,y-mean_y)       # compute inv(K)*(y-mean(y))
+    fmu   = ms + np.dot(Kstar.T,alpha)     # predicted means
+    v     = np.linalg.solve(L, Kstar)
+    tmp   = v*v
+    fs2   = Kss - np.array([tmp.sum(axis=0)]).T  # predicted variances
     fs2[fs2 < 0.] = 0.                                # Remove numerical noise i.e. negative variances
     return [fmu, fs2]
 
@@ -159,28 +171,37 @@ def infFITC(gp, X, y, Xstar, R=None, w=None, Rstar=None):
     m  = feval(gp['meanfunc'], gp['meantheta'], X)          # evaluate mean vector
     ms = feval(gp['meanfunc'], gp['meantheta'], Xstar)      # evaluate mean vector
     n,D = X.shape
-  
-    [diagK,Kuu,Ku] = feval(covfunc, xu, gp['covtheta'], X)  # evaluate covariance matrix
+    nu = len(xu)
 
-    '''try:
+    [diagK,Kuu,Ku] = feval(covfunc, xu, gp['covtheta'], X)  # evaluate covariance matrix
+    snu2           = 1.e-6 * sn2
+    Kuu           += snu2*np.eye(nu)
+
+    try:
         Luu  = np.linalg.cholesky(Kuu)                         # Kuu = Luu'*Luu
     except np.linalg.linalg.LinAlgError:
         Luu  = np.linalg.cholesky(nearPD(Kuu))                 # Kuu = Luu'*Luu, or at least closest SDP Kuu
 
-    V     = np.linalg.solve(Luu.T,Ku)                              # V = inv(Luu')*Ku => V'*V = Q
-    g_sn2 = diagK - (V*V).sum(axis=0).T                            # g = diag(K) - diag(Q)
-    diagG = np.reshape( np.diag(g_sn2),(g_sn2.shape[0],1)) 
-    Lu    = np.linalg.cholesky( np.eye(nu) + np.dot(V/np.tile(diagG.T,(nu,1)),V.T) )  # Lu'*Lu = I + V*diag(1/g_sn2)*V'
-    r     = (y-m)/np.sqrt(g_sn2)
-    be    = np.linalg.solve(Lu.T,np.dot(V,(r/np.sqrt(g_sn2))))
+    V     = np.linalg.solve(Luu.T,Ku)                          # V = inv(Luu')*Ku => V'*V = Q
+    M     = np.reshape( np.diag(np.dot(V.T,V)), (diagK.shape[0],1) )
+    g_sn20 = diagK + sn2 - (V*V).sum(axis=0).T                  # g = diag(K) + sn2 - diag(Q)
+    g_sn2 = diagK + sn2 - M                  # g = diag(K) + sn2 - diag(Q)
+    print "Values = ",g_sn20, g_sn2
+
+    diagG = np.reshape( np.diag(g_sn2),(g_sn2.shape[0],1))
+    V     = V/np.tile(diagG.T,(nu,1))  
+    Lu    = np.linalg.cholesky( np.eye(nu) + np.dot(V,V.T) )   # Lu'*Lu = I + V*diag(1/g_sn2)*V'
+    r     = (y-m)/np.sqrt(diagG)
+    #be    = np.linalg.solve(Lu.T,np.dot(V,(r/np.sqrt(g_sn2))))
+    be    = np.linalg.solve(Lu.T,np.dot(V,r))
     iKuu  = solve_chol(Luu,np.eye(nu))                       # inv(Kuu + snu2*I) = iKuu
     LuBe  = np.linalg.solve(Lu,be)
     alpha = np.linalg.solve(Luu,LuBe)                      # return the posterior parameters
-    L     = solve_chol(np.dot(Lu,Luu),np.eye(nu)) - iKuu                    # Sigma-inv(Kuu)'''
+    L     = solve_chol(np.dot(Lu,Luu),np.eye(nu)) - iKuu                    # Sigma-inv(Kuu)
 
-    Q = np.dot(Ku.T,np.linalg.solve(Kuu,Ku))
-    Lam = diagK - np.reshape( np.diag(Q), (diagK.shape[0],1) ) # diag(K) - diag(Q), Q = Kxu * Kuu^-1 * Kux
-    K = Q + Lam* np.eye(len(Lam))
+    #Q = np.dot(Ku.T,np.linalg.solve(Kuu,Ku))
+    #Lam = diagK - np.reshape( np.diag(Q), (diagK.shape[0],1) ) # diag(K) - diag(Q), Q = Kxu * Kuu^-1 * Kux
+    #K = Q + Lam* np.eye(len(Lam))
 
     if R==None:
         Kss    = feval(covfunc[1], gp['covtheta'], Xstar, 'diag')   
@@ -190,12 +211,17 @@ def infFITC(gp, X, y, Xstar, R=None, w=None, Rstar=None):
         Kss   = feval(covfunc[1], gp['covtheta'], Xstar, R, w, 'diag', Rstar)   # test covariances
         Ku    = feval(covfunc[1], gp['covtheta'], Xstar, R, w, xu, Rstar)   # test covariances
 
-    Qsf = np.dot(Kus.T,np.linalg.solve(Kuu, Kuf))
-    fmu   = ms + np.dot(Qsf,np.linalg.solve(K,y-m))  # predicted means
+    #Qsf = np.dot(Kus.T,np.linalg.solve(Kuu, Kuf))
+    #fmu = ms + np.dot(Qsf,np.linalg.solve(K,y-m))  # predicted means
+    fmu = ms + np.dot(Kus.T,alpha)  # predicted means
 
-    QQ = np.dot(Qsf,np.linalg.solve(K,Qsf.T))
+    #QQ = np.dot(Qsf,np.linalg.solve(K,Qsf.T))
     
-    fs2   = Kss - np.reshape( np.diag(QQ), (Kss.shape[0],1) ) # predicted variances
+    #fs2   = Kss - np.reshape( np.diag(QQ), (Kss.shape[0],1) ) # predicted variances
+
+    vv    = np.linalg.solve(L.T, Kuf)
+    tmp   = vv*vv
+    fs2   = Kss - np.array([tmp.sum(axis=0)]).T  # predicted variances
     fs2[fs2 < 0.] = 0.                                # Remove numerical noise i.e. negative variances
     return [fmu, fs2]
 
@@ -232,7 +258,10 @@ def nlml(theta, gp, X, y, R=None, w=None):
         m  = feval(gp['meanfunc'], meantheta, X)          # evaluate mean vector
         nu = Ku.shape[0]
 
-        '''try:
+        snu2 = 1.e-6 * sn2
+        Kuu += snu2*np.eye(nu)
+
+        try:
             Luu  = np.linalg.cholesky(Kuu)                         # Kuu = Luu'*Luu
         except np.linalg.linalg.LinAlgError:
             Luu  = np.linalg.cholesky(nearPD(Kuu))                 # Kuu = Luu'*Luu, or at least closest SDP Kuu
@@ -240,30 +269,42 @@ def nlml(theta, gp, X, y, R=None, w=None):
         V     = np.linalg.solve(Luu.T,Ku)                              # V = inv(Luu')*Ku => V'*V = Q
         g_sn2 = diagK - (V*V).sum(axis=0).T                            # g = diag(K) - diag(Q)
         diagG = np.reshape( np.diag(g_sn2),(g_sn2.shape[0],1)) 
-        Lu    = np.linalg.cholesky( np.eye(nu) + np.dot(V/np.tile(diagG.T,(nu,1)),V.T) )  # Lu'*Lu = I + V*diag(1/g_sn2)*V'
-        r     = (y-m)/np.sqrt(g_sn2)
-        be    = np.linalg.solve(Lu.T,np.dot(V,(r/np.sqrt(g_sn2))))
+        V     = V/np.tile(diagG.T,(nu,1))
+        Lu    = np.linalg.cholesky( np.eye(nu) + np.dot(V,V.T) )  # Lu'*Lu = I + V*diag(1/g_sn2)*V'
+
+        r     = (y-m)/np.sqrt(diagG)
+        V     = np.linalg.solve(Luu.T,Ku)                              # V = inv(Luu')*Ku => V'*V = Q
+        #be    = np.linalg.solve(Lu.T,np.dot(V,(r/np.sqrt(g_sn2))))
+        be    = np.linalg.solve(Lu.T,np.dot(V,r))
         iKuu  = solve_chol(Luu,np.eye(nu))                       # inv(Kuu + snu2*I) = iKuu
         LuBe  = np.linalg.solve(Lu,be)
         alpha = np.linalg.solve(Luu,LuBe)                      # return the posterior parameters
-        L     = solve_chol(np.dot(Lu,Luu),np.eye(nu)) - iKuu                    # Sigma-inv(Kuu)'''
+        L     = solve_chol(np.dot(Lu,Luu),np.eye(nu)) - iKuu                    # Sigma-inv(Kuu)
 
-        Q = np.dot(Ku.T,np.linalg.solve(Kuu,Ku))
-        Lam = diagK - np.reshape( np.diag(Q), (diagK.shape[0],1) ) # diag(K) - diag(Q), Q = Kxu * Kuu^-1 * Kux
-        K = Q + Lam* np.eye(len(Lam))
+        #Q = np.dot(Ku.T,np.linalg.solve(Kuu,Ku))
+        #Lam = diagK - np.reshape( np.diag(Q), (diagK.shape[0],1) ) # diag(K) - diag(Q), Q = Kxu * Kuu^-1 * Kux
+        #K = Q + Lam* np.eye(len(Lam))
 
         ms = feval(gp['meanfunc'], meantheta, X)
 
         # cholesky factorization of the covariance
-        try:
-            L = np.linalg.cholesky(K)      # lower triangular matrix
-        except np.linalg.linalg.LinAlgError:
-            L = np.linalg.cholesky(nearPD(K))                 # Find the "Nearest" covariance mattrix to K and do cholesky on that
+        #try:
+        #    L = np.linalg.cholesky(K)      # lower triangular matrix
+        #except np.linalg.linalg.LinAlgError:
+        #    L = np.linalg.cholesky(nearPD(K))                 # Find the "Nearest" covariance mattrix to K and do cholesky on that
         # compute inv(K)*y
-        alpha = solve_chol(L.T,y-m)
+        #alpha = solve_chol(L.T,y-m)
+        #alpha = np.linalg.solve(K,y-m)
         # compute the negative log marginal likelihood
-        #aa = ( np.log(np.diag(Lu)).sum() + log(g_sn2).sum() + n*np.log(2.*np.pi) + np.dot(r.T,r) - np.dot(be.T,be) )/2.
-        aa =  ( 0.5*np.dot((y-ms).T,alpha) + (np.log(np.diag(L))).sum(axis=0) + 0.5*n*np.log(2.*np.pi) )
+        aa = ( np.log(np.diag(Lu)).sum() + np.log(g_sn2).sum() + n*np.log(2.*np.pi) + np.dot(r.T,r) - np.dot(be.T,be) )/2.
+        #aa =  ( 0.5*np.dot((y-ms).T,alpha) + (np.log(np.diag(L))).sum(axis=0) + 0.5*n*np.log(2.*np.pi) )
+        #aa =  ( 0.5*np.dot((y-ms).T,alpha) + (np.log(np.linalg.det(K))) + 0.5*n*np.log(2.*np.pi) )
+        #t1 = 0.5*np.dot((y-ms).T,alpha)
+        #t2 = (np.log(np.linalg.det(K)))
+        #t3 = 0.5*n*np.log(2.*np.pi) 
+        #t4 = np.linalg.det(K)
+        #print t1, t2, t3, t4
+        #aa = t1 + t2 + t3 
 
     else:
         # Do Exact inference
@@ -273,6 +314,7 @@ def nlml(theta, gp, X, y, R=None, w=None):
         else:
             K = feval(gp['covfunc'], covtheta, X, R, w)     
 
+        K += sn2*np.eye(X.shape[0])
         m = feval(gp['meanfunc'], meantheta, X)
     
         # cholesky factorization of the covariance
@@ -281,7 +323,8 @@ def nlml(theta, gp, X, y, R=None, w=None):
         except np.linalg.linalg.LinAlgError:
             L = np.linalg.cholesky(nearPD(K))                 # Find the "Nearest" covariance mattrix to K and do cholesky on that
         # compute inv(K)*y
-        alpha = solve_chol(L.T,y-m)
+        #alpha = solve_chol(L.T,y-m)
+        alpha = np.linalg.solve(K,y-m) 
         # compute the negative log marginal likelihood
         aa =  ( 0.5*np.dot((y-m).T,alpha) + (np.log(np.diag(L))).sum(axis=0) + 0.5*n*np.log(2.*np.pi) )
     return aa[0]
@@ -298,10 +341,18 @@ def dnlml(theta, gp, X, y, R=None, w=None):
         cov = gp['covfunc']
         xu      = cov[-1]
         covfunc = cov[1:-1][0]
-
+        nu = len(xu)
         [diagK,Kuu,Ku] = feval(cov[:-1], xu, covtheta, X)  # evaluate covariance matrix
 
-        '''try:
+        snu2 = 1.e-6 * sn2
+        Kuu += snu2*np.eye(nu)
+
+        m  = feval(gp['meanfunc'], meantheta, X)          # evaluate mean vector
+        n,D = X.shape
+        nu = Ku.shape[0]
+
+
+        try:
             Luu  = np.linalg.cholesky(Kuu)                         # Kuu = Luu'*Luu
         except np.linalg.linalg.LinAlgError:
             Luu  = np.linalg.cholesky(nearPD(Kuu))                 # Kuu = Luu'*Luu, or at least closest SDP Kuu
@@ -309,29 +360,37 @@ def dnlml(theta, gp, X, y, R=None, w=None):
         V     = np.linalg.solve(Luu.T,Ku)                              # V = inv(Luu')*Ku => V'*V = Q
         g_sn2 = diagK - (V*V).sum(axis=0).T                            # g = diag(K) - diag(Q)
         diagG = np.reshape( np.diag(g_sn2),(g_sn2.shape[0],1)) 
-        Lu    = np.linalg.cholesky( np.eye(nu) + np.dot(V/np.tile(diagG.T,(nu,1)),V.T) )  # Lu'*Lu = I + V*diag(1/g_sn2)*V'
-        r     = (y-m)/np.sqrt(g_sn2)
-        be    = np.linalg.solve(Lu.T,np.dot(V,(r/np.sqrt(g_sn2))))
+        V     = V/np.tile(diagG.T,(nu,1))
+        Lu    = np.linalg.cholesky( np.eye(nu) + np.dot(V,V.T) )  # Lu'*Lu = I + V*diag(1/g_sn2)*V'
+        r     = (y-m)/np.sqrt(diagG)
+        #be    = np.linalg.solve(Lu.T,np.dot(V,(r/np.sqrt(g_sn2))))
+        be    = np.linalg.solve(Lu.T,np.dot(V,r))
+        V     = np.linalg.solve(Luu.T,Ku)                              # V = inv(Luu')*Ku => V'*V = Q
         iKuu  = solve_chol(Luu,np.eye(nu))                       # inv(Kuu + snu2*I) = iKuu
         LuBe  = np.linalg.solve(Lu,be)
         alpha = np.linalg.solve(Luu,LuBe)                      # return the posterior parameters
         L     = solve_chol(np.dot(Lu,Luu),np.eye(nu)) - iKuu                    # Sigma-inv(Kuu)'''
 
-        Q = np.dot(Ku.T,np.linalg.solve(Kuu,Ku))
-        Lam = diagK - np.reshape( np.diag(Q), (diagK.shape[0],1) ) # diag(K) - diag(Q), Q = Kxu * Kuu^-1 * Kux
-        K = Q + Lam* np.eye(len(Lam))
-
-        m  = feval(gp['meanfunc'], meantheta, X)          # evaluate mean vector
-        n,D = X.shape
-        nu = Ku.shape[0]
+        #Q = np.dot(Ku.T,np.linalg.solve(Kuu,Ku))
+        #Lam = diagK - np.reshape( np.diag(Q), (diagK.shape[0],1) ) # diag(K) - diag(Q), Q = Kxu * Kuu^-1 * Kux
+        #K = Q + Lam* np.eye(len(Lam))
 
         # cholesky factorization of the covariance
-        try:
-            L = np.linalg.cholesky(K) # lower triangular matrix
-        except np.linalg.linalg.LinAlgError:
-            L = np.linalg.cholesky(nearPD(K)) # Find the "Nearest" covariance mattrix to K and do cholesky on that
-        alpha = solve_chol(L.T,y-m)
-        W = np.linalg.solve(L.T,np.linalg.solve(L,np.eye(n)))-np.dot(alpha,alpha.T)
+        #try:
+        #    L = np.linalg.cholesky(K) # lower triangular matrix
+        #except np.linalg.linalg.LinAlgError:
+        #    L = np.linalg.cholesky(nearPD(K)) # Find the "Nearest" covariance mattrix to K and do cholesky on that
+        #alpha = solve_chol(L.T,y-m)
+        #alpha = np.linalg.solve(K,y-m)
+        #W = np.linalg.solve(L.T,np.linalg.solve(L,np.eye(n)))-np.dot(alpha,alpha.T)
+        #W = np.linalg.solve(K,np.eye(n))-np.dot(alpha,alpha.T)
+
+        W     = Ku/np.tile(diagG.T,(nu,1))
+        W     = np.linalg.solve((Kuu + np.dot(W,W.T) + snu2*np.eye(nu)).T, Ku)
+        al    = ( (y-m) - np.dot(W.T,np.dot(W,(y-m)/diagG)) )/diagG
+        B     = np.dot(iKuu,Ku)
+        Wdg   = W/np.tile(diagG.T,(nu,1))
+        w     = np.dot(B,al)
 
         '''al = r/np.sqrt(g_sn2) - np.dot(V.T,LuBe)/g_sn2          # al = (Kt+sn2*eye(n))\y
         B = np.dot(iKuu,Ku)
@@ -340,18 +399,17 @@ def dnlml(theta, gp, X, y, R=None, w=None):
 
         if R==None:
             for ii in range(len(meantheta)):
-                out[ii] = (W*feval(gp['meanfunc'], meantheta, X, ii)).sum()/2.
-                #out[ii] = -1.*np.dot(feval(gp['meanfunc'], meantheta, X, ii).T,al)
+                out[ii] = -1.*np.dot(feval(gp['meanfunc'], meantheta, X, ii).T,al)
 
             kk = len(gp['meantheta'])
             for ii in range(len(covtheta)):
-                '''[ddiagKi,dKuui,dKui] = feval(covfunc, covtheta, X, None, ii)  # eval cov deriv
-                R = 2.*dKui-np.dot(dKuui,B)
+                [ddiagKi,dKuui,dKui] = feval(cov[:-1], covtheta, X, None, ii)  # eval cov deriv
+                R = 2.*dKui - np.dot(dKuui,B)
                 v = ddiagKi - (R*B).sum(axis=0).T   # diag part of cov deriv
                 out[ii+kk] = ( np.dot(ddiagKi.T,(1./g_sn2)) + np.dot(w.T,(np.dot(dKuui,w)-2.*np.dot(dKui,al))-np.dot(al.T,(v*al) \
-                               - np.dot((W*W).sum(axis=0),v) - np.dot(R,W.T)*np.dot(B,W.T))) )/2.'''
-                A = feval(covfunc, covtheta, X, None, ii) 
-                out[ii+kk] = ( W * feval(covfunc, covtheta, X, None, ii) ).sum()/2.
+                               - np.dot((Wdg*Wdg).sum(axis=0),v) - np.dot(R,Wdg.T)*np.dot(B,Wdg.T))) )/2.
+                #A = feval(covfunc, covtheta, X, None, ii) 
+                #out[ii+kk] = ( W * feval(covfunc, covtheta, X, None, ii) ).sum()/2.
         else:
             for ii in range(len(meantheta)):
                 out[ii] = (W*feval(gp['meanfunc'], meantheta, X, R, w, ii)).sum()/2.
@@ -387,6 +445,8 @@ def get_W(theta, gp, X, y, R=None, w=None):
         K = feval(gp['covfunc'], covtheta, X)
     else:
         K = feval(gp['covfunc'], covtheta, X, R, w)
+    K += sn2*np.eye(X.shape[0])
+
     m = feval(gp['meanfunc'], meantheta, X)
     # cholesky factorization of the covariance
     try:

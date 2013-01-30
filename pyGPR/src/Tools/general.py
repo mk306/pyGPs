@@ -30,12 +30,17 @@ Substantial updates by Daniel Marthaler July 2012.
 get_nb_param() added by Marion Neumann (Aug 2012).
 '''
 import numpy as np
-from GPR import kernels, means
+from GPR import kernels, means, lik, inf
 
 ## NEW 01/08/2012
 def feval(funcName, *args):    
     assert(isinstance(funcName, list))
     if len(funcName) > 1:
+        if funcName[0] == ['kernels.covFITC']:
+            if not args:
+                return feval(funcName[0],funcName[1],funcName[2])[0]
+            else:
+                return feval(funcName[0],funcName[1],funcName[2], *args)
         # This is a composition
         assert(len(funcName) == 2)
         z = funcName[0]
@@ -47,6 +52,10 @@ def feval(funcName, *args):
             return getattr(kernels,fun)(funcName[1],*args)
         elif mod == 'means':
             return getattr(means,fun)(funcName[1],*args)
+        elif mod == 'lik':
+            return getattr(lik,fun)(funcName[1],*args)
+        elif mod == 'inf':
+            return getattr(inf,fun)(*args)
         else:
             raise Exception("Error in parameter function type")
     else:
@@ -63,6 +72,10 @@ def feval(funcName, *args):
         return getattr(kernels,fun)(*args)
     elif mod == 'means':
         return getattr(means,fun)(*args)
+    elif mod == 'lik':
+        return getattr(lik,fun)(*args)
+    elif mod == 'inf':
+        return getattr(inf,fun)(*args)
     else:
         raise Exception("Error in parameter function type")
 
