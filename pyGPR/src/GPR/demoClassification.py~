@@ -1,13 +1,14 @@
+#import kernels
+#import means
 from gp import gp
-from UTIL.solve_chol import solve_chol
-import Tools.general
-import Tools.min_wrapper
-import Tools.nearPD
+from min_wrapper import min_wrapper
+from solve_chol import solve_chol
+from  Tools import general, nearPD
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.mlab as mlab
-from UTIL.utils import convert_to_array, hyperParameters, plotter, FITCplotter
+from utils import convert_to_array, hyperParameters, plotter, FITCplotter
 
 if __name__ == '__main__':
     ## GENERATE data from a noisy GP

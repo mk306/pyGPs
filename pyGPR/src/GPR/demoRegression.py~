@@ -49,6 +49,9 @@ if __name__ == '__main__':
     #_________________________________
     # STANDARD GP:
     ## PREDICTION 
+    vargout = Tools.general.feval(inffunc, hyp, meanfunc, covfunc, likfunc, x, y, 3)
+    post = vargout[0]; nlZ = vargout[1]; dnlZ = vargout[2]
+    print dnlZ.cov
     vargout = gp(hyp,inffunc,meanfunc,covfunc,likfunc,x,y,None,None,False)
     print "nlml = ",vargout[0]
     vargout = gp(hyp,inffunc,meanfunc,covfunc,likfunc,x,y,z)

@@ -1,9 +1,10 @@
 import numpy as np
 import Tools.general
-from solve_chol import solve_chol
+from Tools.general import feval
+from ..UTIL.solve_chol import solve_chol
 from copy import copy, deepcopy
-from utils import randperm, cholupdate
-from brentmin import brentmin
+from ..UTIL.utils import randperm, cholupdate
+from ..UTIL.brentmin import brentmin
 
 class postStruct:
     def __init__(self):

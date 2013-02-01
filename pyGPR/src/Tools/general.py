@@ -30,9 +30,11 @@ Substantial updates by Daniel Marthaler July 2012.
 get_nb_param() added by Marion Neumann (Aug 2012).
 '''
 import numpy as np
-from GPR import kernels, means, lik, inf
+from GPR.MEAN import means
+from GPR.COV import kernels
+from GPR.LIK import lik
+from GPR.INF import inf
 
-## NEW 01/08/2012
 def feval(funcName, *args):    
     assert(isinstance(funcName, list))
     if len(funcName) > 1:
