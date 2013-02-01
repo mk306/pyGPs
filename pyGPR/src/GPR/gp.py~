@@ -1,5 +1,5 @@
 import numpy as np
-import Tools.general
+from Tools import general
 from UTIL import solve_chol
 from UTIL.utils import checkParameters, unique
 

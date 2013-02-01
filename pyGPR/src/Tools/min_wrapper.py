@@ -3,7 +3,7 @@ from copy import deepcopy
 from scipy.optimize import fmin_bfgs as bfgs
 from scipy.optimize import fmin_cg as cg
 
-from utils import convert_to_array, convert_to_class
+from GPR.UTIL.utils import convert_to_array, convert_to_class
 
 def min_wrapper(hyp, F, Flag, *varargin):
     # Utilize scipy.optimize functions to minimize the negative log marginal liklihood.  This is REALLY inefficient!
