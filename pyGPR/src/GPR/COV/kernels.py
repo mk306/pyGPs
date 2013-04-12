@@ -468,7 +468,7 @@ def covLINard(hyp=None, x=None, z=None, der=None):
         z = np.dot(z,np.diag(1./ell))
         A = np.dot(x_,z.T)                   # cross covariances
 
-    if der and der < D:
+    if not der == None and der < D:
         if z == 'diag':
             A = -2.*x_[:,der]*x_[:,der]
         elif z == None:
@@ -634,11 +634,12 @@ def covSEard(hyp=None, x=None, z=None, der=None):
         A = sq_dist(np.dot(np.diag(ell),x.T).T,np.dot(np.diag(ell),z.T).T)       # cross covariances
  
     A = sf2*np.exp(-0.5*A)
-    if der:
+    if not der == None:
         if der < D:      # compute derivative matrix wrt length scale parameters
             if z == 'diag':
-                A = A*0
+                A = A*0.
             elif z == None:
+                B = sq_dist(x[:,der].T/ell[der])
                 A = A * sq_dist(x[:,der].T/ell[der])
             else:
                 A = A * sq_dist(x[:,der].T/ell[der],z[:,der].T/ell[der])
@@ -1047,22 +1048,27 @@ def sq_dist(a, b=None):
     '''Compute a matrix of all pairwise squared distances
     between two sets of vectors, stored in the row of the two matrices:
     a (of size n by D) and b (of size m by D). '''
-
-    n = a.shape[0]
-    D = a.shape[1]
+    tmp = a.shape
+    n = tmp[0]
+    if len(tmp) < 2:
+        a = np.reshape(a,(n,1))
+        D = 1
+    else:
+        D = a.shape[1]
     m = n    
 
     if b == None:
-        b = a.transpose()
+        b = a.T
     else:
         m = b.shape[0]
-        b = b.transpose()
+        b = b.T
 
     C = np.zeros((n,m))
 
-    for d in range(0,D):
+    for d in range(D):
         tt = a[:,d]
         tt = tt.reshape(n,1)
+
         tem = np.kron(np.ones((1,m)), tt)
         tem = tem - np.kron(np.ones((n,1)), b[d,:])
         C = C + tem * tem  

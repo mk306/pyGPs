@@ -37,6 +37,30 @@ def randperm(k):
         ii += 1
     return y
 
+def cool_plotter(xs,ym,ys2,x,y,axisvals=None,file=None):
+    xss  = np.reshape(xs,(xs.shape[0],))
+    ymm  = np.reshape(ym,(ym.shape[0],))
+    ys22 = np.reshape(ys2,(ys2.shape[0],))
+    fig = plt.figure()
+    ax = fig.add_subplot(111,axisbg=[0.,1.0,0.0,0.2])
+    #plt.plot(xs, ym, 'g-', x, y, 'r+', linewidth = 3.0, markersize = 10.0)
+    plt.plot(xs, ym, 'r-', x, y, 'y^', linewidth = 3.0, markersize = 5.0)
+    plt.fill_between(xss,ymm + 1.*np.sqrt(ys22), ymm - 1.*np.sqrt(ys22), facecolor=[0.,1.0,0.0,0.8],linewidths=0.0)
+    plt.fill_between(xss,ymm + 2.*np.sqrt(ys22), ymm - 2.*np.sqrt(ys22), facecolor=[0.,1.0,0.0,0.6],linewidths=0.0)
+    plt.fill_between(xss,ymm + 3.*np.sqrt(ys22), ymm - 3.*np.sqrt(ys22), facecolor=[0.,1.0,0.0,0.4],linewidths=0.0)
+    plt.grid()
+    if axisvals:
+        plt.axis(axisvals)
+    #plt.xlabel('input x')
+    #plt.ylabel('output y')
+
+    #Create figure; attempt to set background to light gray
+    fig.set_facecolor("#000000")
+    #plt.savefig('GP.png')
+    if file and isinstance(file,str):
+        plt.savefig(file)
+    plt.show()
+
 def plotter(xs,ym,ys2,x,y,axisvals=None,file=None):
     xss  = np.reshape(xs,(xs.shape[0],))
     ymm  = np.reshape(ym,(ym.shape[0],))
@@ -74,7 +98,7 @@ def convert_to_array(hyp):
     return y
 
 def convert_to_class(x,hyp):
-    y = deepcopy(hyp)
+    y  = deepcopy(hyp)
     Lm = len(hyp.mean)
     Lc = len(hyp.cov)
     y.mean = x[:Lm]

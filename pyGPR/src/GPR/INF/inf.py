@@ -455,7 +455,7 @@ def infFITC_EP(hyp, meanfunc, covfunc, likfunc, x, y, nargout=1):
     # for a vector of cavity parameters.
 
     # marginal likelihood for ttau = tnu = zeros(n,1); equals n*log(2) for likCum*
-    nlZ0 = -Tools.general.feval(likfunc, hyp.lik, y, m, np.reshape(diagK,(diagK.shape[0],1)), inffunc).sum()
+    nlZ0 = -1.*Tools.general.feval(likfunc, hyp.lik, y, m, np.reshape(diagK,(diagK.shape[0],1)), inffunc).sum()
     if "last_ttau" not in infFITC_EP.__dict__:   # find starting point for tilde parameters
         ttau  = np.zeros((n,1))             # initialize to zero if we have no better guess
         tnu   = np.zeros((n,1))
@@ -638,7 +638,8 @@ def infEP(hyp, meanfunc, covfunc, likfunc, x, y, nargout=1):
     # for a vector of cavity parameters.
 
     # marginal likelihood for ttau = tnu = zeros(n,1); equals n*log(2) for likCum*
-    nlZ0 = -Tools.general.feval(likfunc, hyp.lik, y, m, np.reshape(np.diag(K),(np.diag(K).shape[0],1)), inffunc).sum()
+    nlZ0 = -Tools.general.feval(likfunc,hyp.lik,y,m,np.reshape(np.diag(K),(np.diag(K).shape[0],1)),inffunc,None,1).sum()
+
     if "last_ttau" not in infEP.__dict__:   # find starting point for tilde parameters
         ttau  = np.zeros((n,1))             # initialize to zero if we have no better guess
         tnu   = np.zeros((n,1))
@@ -697,34 +698,36 @@ def infEP(hyp, meanfunc, covfunc, likfunc, x, y, nargout=1):
     post.sW    = sW
     post.L     = L
 
-    if nargout>2:                                           # do we want derivatives?
-        dnlZ = deepcopy(hyp)                               # allocate space for derivatives
-        ssi  = np.sqrt(ttau)
-        V = np.linalg.solve(L.T,np.tile(ssi,(1,n))*K)
-        Sigma = K - np.dot(V.T,V)
-        mu = np.dot(Sigma,tnu)
-        Dsigma = np.reshape(np.diag(Sigma),(np.diag(Sigma).shape[0],1))
-        tau_n = 1/Dsigma-ttau                    # compute the log marginal likelihood
-        nu_n  = mu/Dsigma-tnu                    # vectors of cavity parameters
-
-        F = np.dot(alpha,alpha.T) - np.tile(sW,(1,n))* \
-            solve_chol(L,np.reshape(np.diag(sW),(np.diag(sW).shape[0],1)))   # covariance hypers
-        for jj in range(len(hyp.cov)):
-            dK = Tools.general.feval(covfunc, hyp.cov, x, None, jj)
-            dnlZ.cov[jj] = -(F*dK).sum()/2.
-        #end
-        for ii in range(len(hyp.lik)):
-            dlik = Tools.general.feval(likfunc, hyp.lik, y, nu_n/tau_n, 1/tau_n, inffunc, ii)
-            dnlZ.lik[ii] = -dlik.sum()
-        #end
-        [junk,dlZ] = Tools.general.feval(likfunc, hyp.lik, y, nu_n/tau_n, 1/tau_n, inffunc) # mean hyps
-        for ii in range(len(hyp.mean)):
-            dm = Tools.general.feval(meanfunc, hyp.mean, x, ii)
-            dnlZ.mean[ii] = -np.dot(dlZ.T,dm)
-        #end
-        vargout = [post, nlZ, dnlZ]
+    if nargout > 1:                                           
+        if nargout > 2:                             # do we want derivatives?
+            dnlZ = deepcopy(hyp)                        # allocate space for derivatives
+            ssi  = np.sqrt(ttau)
+            V = np.linalg.solve(L.T,np.tile(ssi,(1,n))*K)
+            Sigma = K - np.dot(V.T,V)
+            mu = np.dot(Sigma,tnu)
+            Dsigma = np.reshape(np.diag(Sigma),(np.diag(Sigma).shape[0],1))
+            tau_n = 1/Dsigma-ttau                    # compute the log marginal likelihood
+            nu_n  = mu/Dsigma-tnu                    # vectors of cavity parameters
+            F = np.dot(alpha,alpha.T) - np.tile(sW,(1,n))* \
+                solve_chol(L,np.diag(np.reshape(sW,(sW.shape[0],))))   # covariance hypers
+            for ii in range(len(hyp.cov)):
+                dK = Tools.general.feval(covfunc, hyp.cov, x, None, ii)
+                dnlZ.cov[ii] = -(F*dK).sum()/2.
+            #end
+            for ii in range(len(hyp.lik)):
+                dlik = Tools.general.feval(likfunc, hyp.lik, y, nu_n/tau_n, 1/tau_n, inffunc, ii, 1)
+                dnlZ.lik[ii] = -dlik.sum()
+            #end
+            [junk,dlZ] = Tools.general.feval(likfunc, hyp.lik, y, nu_n/tau_n, 1/tau_n, inffunc, None, 2) # mean hyps
+            for ii in range(len(hyp.mean)):
+                dm = Tools.general.feval(meanfunc, hyp.mean, x, ii)
+                dnlZ.mean[ii] = -np.dot(dlZ.T,dm)
+            #end
+            vargout = [post, nlZ, dnlZ]
+        else:
+            vargout = [post, nlZ]
     else:
-        vargout = [post, nlZ]
+        vargout = [post]
     #end
     return vargout
 

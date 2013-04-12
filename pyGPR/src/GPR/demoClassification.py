@@ -1,14 +1,14 @@
 from gp import gp
 from UTIL.solve_chol import solve_chol
 import Tools.general
-import Tools.min_wrapper
+from Tools.min_wrapper import nlml, dnlml, min_wrapper
 import Tools.nearPD
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.mlab as mlab
-from UTIL.utils import convert_to_array, hyperParameters, plotter, FITCplotter
-
+from UTIL.utils import convert_to_array, hyperParameters, plotter, FITCplotter, convert_to_array, convert_to_class
+from scipy.optimize import fmin_cg as cg
 if __name__ == '__main__':
     ## GENERATE data from a noisy GP
     n1 = 80; n2 = 40;
@@ -162,6 +162,7 @@ if __name__ == '__main__':
     plt.grid()
     plt.axis([-4, 4, -4, 4])
     plt.show()
+    
 
     meanfunc = [ ['means.meanConst'] ] 
     covfunc  = [ ['kernels.covSEard'] ]   
@@ -169,6 +170,12 @@ if __name__ == '__main__':
     inffunc = [ ['inf.infEP'] ]
 
     hyp = hyperParameters()
+
+    #hyp.mean = np.array([0.])
+    #hyp.cov  = np.array([-1.0,0.0,0.0])
+    #vargout = min_wrapper(hyp,gp,'CG',inffunc,meanfunc,covfunc,likfunc,x,y,None,None,True)
+    #hyp = vargout[0]
+
     hyp.mean = np.array([-2.842117459073954])
     hyp.cov  = np.array([0.051885508906388,0.170633324977413,1.218386482861781])
 
@@ -190,9 +197,7 @@ if __name__ == '__main__':
     nu = u.shape[0]
     covfuncF = [['kernels.covFITC'], covfunc, u]
     inffunc = [['inf.infFITC_Laplace'] ]         
-    #inffunc = [['inf.infFITC_EP'] ]         
-    # vargout = min_wrapper(hyp,gp,'CG',inffunc,meanfunc,covfunc,likfunc,x,y,None,None,True)
-    # hyp = vargout[0]
+    inffunc = [['inf.infFITC_EP'] ]         
     vargout = gp(hyp, inffunc, meanfunc, covfuncF, likfunc, x, y, t, np.ones((n,1)) )
     a = vargout[0]; b = vargout[1]; c = vargout[2]; d = vargout[3]; lp = vargout[4]
 
@@ -205,3 +210,4 @@ if __name__ == '__main__':
     plt.grid()
     plt.axis([-4, 4, -4, 4])
     plt.show()
+    

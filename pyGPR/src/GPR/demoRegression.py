@@ -1,7 +1,6 @@
 from gp import gp
 from UTIL.solve_chol import solve_chol
-import Tools.general
-import Tools.min_wrapper 
+from Tools.min_wrapper import min_wrapper 
 import Tools.nearPD
 import numpy as np
 import matplotlib.pyplot as plt
@@ -61,12 +60,13 @@ if __name__ == '__main__':
     ## SET (hyper)parameters
     hyp2 = hyperParameters()
 
-    hyp2.cov = np.array([0.0,0.0])
+    hyp2.cov = np.array([-1.0,0.0])
     hyp2.lik = np.array([np.log(0.1)])
-    #vargout = min_wrapper(hyp2,gp,'CG',inffunc,[],covfunc,likfunc,x,y,None,None,True)
-    #hyp2 = vargout[0]
-    hyp2.cov = np.array([-0.993396880620537,0.685943441677086])
-    hyp2.lik = np.array([-1.902546786026883])
+    vargout = min_wrapper(hyp2,gp,'CG',inffunc,[],covfunc,likfunc,x,y,None,None,True)
+    hyp2 = vargout[0]
+    #hyp2.cov = np.array([-0.993396880620537,0.685943441677086])
+    #hyp2.lik = np.array([-1.902546786026883])
+
     vargout = gp(hyp2,inffunc,[],covfunc,likfunc,x,y,None,None,False)
     print "nlml2 = ",vargout[0]
 
@@ -79,15 +79,15 @@ if __name__ == '__main__':
     covfunc = [ ['kernels.covSEiso'] ]
     hyp = hyperParameters()
 
-    hyp.cov = np.array([0.0,0.0])
+    hyp.cov = np.array([-1.0,0.0])
     hyp.mean = np.array([0.0,0.0])
     hyp.lik = np.array([np.log(0.1)])
 
-    #vargout = min_wrapper(hyp,gp,'BFGS',inffunc,meanfunc,covfunc,likfunc,x,y,None,None,True)
-    #hyp = vargout[0]
-    hyp.mean = np.array([1.1919,1.4625])
-    hyp.cov = np.array([-1.1513,-0.4559])
-    hyp.lik = np.array([-1.9122])
+    vargout = min_wrapper(hyp,gp,'BFGS',inffunc,meanfunc,covfunc,likfunc,x,y,None,None,True)
+    hyp = vargout[0]
+    #hyp.mean = np.array([1.1919,1.4625])
+    #hyp.cov = np.array([-1.1513,-0.4559])
+    #hyp.lik = np.array([-1.9122])
     vargout = gp(hyp,inffunc,meanfunc,covfunc,likfunc,x,y,z)
     ym = vargout[2]; ys2 = vargout[3]
     m  = vargout[2]; s2  = vargout[3]
