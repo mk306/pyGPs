@@ -2,7 +2,7 @@ import numpy as np
 import Tools.general
 from scipy.special import erf
 
-def likErf(hyp=None, y=None, mu=None, s2=None, inffunc=None, der=None, nargout=1):
+def likErf(hyp=None, y=None, mu=None, s2=None, inffunc=None, der=None, nargout=None):
 #function [varargout] = likErf(hyp, y, mu, s2, inf, i)
     # likErf - Error function or cumulative Gaussian likelihood function for binary
     # classification or probit regression. The expression for the likelihood is 
@@ -15,7 +15,6 @@ def likErf(hyp=None, y=None, mu=None, s2=None, inffunc=None, der=None, nargout=1
     # Copyright (c) by Carl Edward Rasmussen and Hannes Nickisch, 2010-07-22.
     #
     # See also LIKFUNCTIONS.M.
-
     if mu == None: 
         return [0] #end   # report number of hyperparameters
     if not y == None:
@@ -24,7 +23,6 @@ def likErf(hyp=None, y=None, mu=None, s2=None, inffunc=None, der=None, nargout=1
     else:
          y = 1; # allow only +/- 1 values
     #end 
-
     if inffunc == None:                              # prediction mode if inf is not present
         y = y*np.ones_like(mu)                                       # make y a vector
         s2zero = True; 
@@ -36,7 +34,7 @@ def likErf(hyp=None, y=None, mu=None, s2=None, inffunc=None, der=None, nargout=1
         if s2zero:                                         # log probability evaluation
             [p,lp] = cumGauss(y,mu,2)
         else:                                                              # prediction
-            lp = Tools.general.feval(['lik.likErf'],hyp, y, mu, s2, 'inf.infEP')
+            lp = Tools.general.feval(['lik.likErf'],hyp, y, mu, s2, 'inf.infEP',None,1)
             p = np.exp(lp)
         #end
         if nargout>1:
@@ -78,13 +76,13 @@ def likErf(hyp=None, y=None, mu=None, s2=None, inffunc=None, der=None, nargout=1
 
         if inffunc == 'inf.infEP':
             if der == None:                                            # no derivative mode
-                #print "s2 = ",s2
                 z = mu/np.sqrt(1+s2) 
                 [junk,lZ] = cumGauss(y,z,2)                            # log part function
                 if not y == None:
                      z = z*y
                 if nargout>1:
-                    if y == None: y = 1
+                    if y == None: 
+                        y = 1
                     n_p = gauOverCumGauss(z,np.exp(lZ))
                     dlZ = y*n_p/np.sqrt(1.+s2)                      # 1st derivative wrt mean
                     if nargout>2:
@@ -97,7 +95,7 @@ def likErf(hyp=None, y=None, mu=None, s2=None, inffunc=None, der=None, nargout=1
                     varargout = lZ
                 #end
             else:                                                   # derivative mode
-                varargout = []                                     # deriv. wrt hyp.lik
+                varargout = 0                                     # deriv. wrt hyp.lik
             #end
   
         if inffunc == 'inf.infVB':
@@ -205,7 +203,7 @@ def likGauss(hyp=None, y=None, mu=None, s2=None, inffunc=None, der=None, nargout
             lp = -(y-mu)**2 /sn2/2 - np.log(2.*np.pi*sn2)/2. 
             s2 = 0.
         else:
-            lp = Tools.general.feval(['lik.likGauss'],hyp, y, mu, s2, 'inf.infEP')                    # prediction
+            lp = Tools.general.feval(['lik.likGauss'],hyp, y, mu, s2, 'inf.infEP',None,1)                    # prediction
         #end
         if nargout>1:
             ymu = mu;                                                       # first y moment

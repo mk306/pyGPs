@@ -145,7 +145,7 @@ def gp(hyp, inffunc, meanfunc, covfunc, likfunc, x, y, xs=None, ys=None, der=Non
             if ys == None:
                 [Lp, Ymu, Ys2] = Tools.general.feval(likfunc,hyp.lik,None,Fmu[:],Fs2[:],None,None,3)
             else:
-                [Lp, Ymu, Ys2] = Tools.general.feval(likfunc,hyp.lik, np.tile(ys[id],(1,N)), Fmu[:], Fs2[:],None,None,3)
+                [Lp, Ymu, Ys2] = Tools.general.feval(likfunc,hyp.lik,np.tile(ys[id],(1,N)),Fmu[:],Fs2[:],None,None,3)
             #end
             lp[id]  = np.reshape( np.reshape(Lp,(np.prod(Lp.shape),N)).sum(axis=1)/N , (len(id),1) )   # log probability; sample averaging
             ymu[id] = np.reshape( np.reshape(Ymu,(np.prod(Ymu.shape),N)).sum(axis=1)/N ,(len(id),1) )  # predictive mean ys|y and ...
