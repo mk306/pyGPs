@@ -30,7 +30,7 @@ pyGPs is free software; you can redistribute it and/or modify  it under the term
 pyGPs is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the  GNU General Public License for more details.
 
 
-
+---------------------------------------------------
 For an implementation of relational GP (XGP) Regression use pyXGPR:
 http://www-kd.iai.uni-bonn.de/index.php?page=software_details&id=19 
 
