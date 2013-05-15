@@ -22,6 +22,8 @@ pyGPs is a library containing code for Gaussian Process (GP) Regression and Clas
 
 pyGP_FN follows the structure and functionallity of the gpml matlab implemetaion by Carl Edward Rasmussen and Hannes Nickisch (Copyright (c) by Carl Edward Rasmussen and Hannes Nickisch, 2013-01-21).
 
+py_GP_OO is an object oriented implemetation of GP regression and classificaion.
+
 
 pyGPs is free software; you can redistribute it and/or modify  it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or  (at your option) any later version.
 
@@ -29,11 +31,12 @@ pyGPs is distributed in the hope that it will be useful, but WITHOUT ANY WARRANT
 
 
 
-For an implementation of relational GP (XGP) Regression use pyXGPR (http://www-kd.iai.uni-bonn.de/index.php?page=software_details&id=19). 
+For an implementation of relational GP (XGP) Regression use pyXGPR:
+http://www-kd.iai.uni-bonn.de/index.php?page=software_details&id=19 
 
 XGP Regression uses, in addition to the attributes, relational knowledge among the data points in form of a (weighted) adjacancy matrix of the graph representing the relations.
 
-pyXGPR is a python implementation of Standard and Relational GPR. Standard GPR follows the matlab implementation by Carl Edward Rasmussen and Chris Williams which is under (C) Copyright 2005 – 2007. Standard GPs are extended to utilize relational information among data points following the hidden common cause model/ XGP framework of Silva et al. Both GP variants offer methods for training and predicion. Within training the hyperparameters are optimized by maximizing the marginal likelihood by using a python implementation by Roland Memisevic of Carl Edward Rasmussen minimize.m (C) Copyright 1999 – 2006.
+pyXGPR is a python implementation of Standard and Relational GPR. Standard GPR follows the matlab implementation by Carl Edward Rasmussen and Chris Williams which is under (C) Copyright 2005 – 2007. Standard GPs are extended to utilize relational information among data points following the hidden common cause model (XGP framework). Both GP variants offer methods for training and predicion. Within training the hyperparameters are optimized by maximizing the marginal likelihood by using a python implementation by Roland Memisevic of Carl Edward Rasmussen minimize.m (C) Copyright 1999 – 2006.
 
 pyXGPR provides an implementation of Standard and Relational Gaussian Process Regression, as it is described in:
 
