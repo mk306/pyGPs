@@ -20,7 +20,7 @@ QUICK INTRODUCTION
 
 pyGPs is a library containing code for Gaussian Process (GP) Regression and Classification.
 
-pyGP_FN follows the structure and functionallity of the gpml matlab implemetaion by Carl Edward Rasmussen and Hannes Nickisch (Copyright (c) by Carl Edward Rasmussen and Hannes Nickisch, 2013-01-21).
+pyGP_FN follows structure and functionality of the gpml matlab implementaion by Carl Edward Rasmussen and Hannes Nickisch (Copyright (c) by Carl Edward Rasmussen and Hannes Nickisch, 2013-01-21).
 
 pyGP_OO is an object oriented implemetation of GP regression and classificaion.
 
