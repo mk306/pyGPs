@@ -34,10 +34,7 @@ pyGPs is distributed in the hope that it will be useful, but WITHOUT ANY WARRANT
 For an implementation of relational GP (XGP) Regression use pyXGPR:
 http://www-kd.iai.uni-bonn.de/index.php?page=software_details&id=19 
 
-XGP Regression uses, in addition to the attributes, relational knowledge among the data points in form of a (weighted) adjacancy matrix of the graph representing the relations.
-
 pyXGPR is a python implementation of Standard and Relational GPR. Standard GPR follows the matlab implementation by Carl Edward Rasmussen and Chris Williams which is under (C) Copyright 2005 – 2007. Standard GPs are extended to utilize relational information among data points following the hidden common cause model (XGP framework). Both GP variants offer methods for training and predicion. Within training the hyperparameters are optimized by maximizing the marginal likelihood by using a python implementation by Roland Memisevic of Carl Edward Rasmussen minimize.m (C) Copyright 1999 – 2006.
-
 pyXGPR provides an implementation of Standard and Relational Gaussian Process Regression, as it is described in:
 
 "M. Neumann, K. Kersting, Z. Xu, D. Schulz. Stacked Gaussian Process Learning. In H. Kargupta, W. Wang, editor(s), Proceedings of the 9th IEEE International Conference on Data Mining (ICDM-09), Miami, FL, USA, Dec. 6-9 2009".
