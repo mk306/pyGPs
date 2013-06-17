@@ -106,9 +106,9 @@ class SumOfMean(Mean):
                 A += self.mean1.proceed(x, der)
             elif der < len(self.hyp):
                 der2 = der - len(self.mean1.hyp)
-                A *= self.mean2.proceed(x, der2)
+                A += self.mean2.proceed(x, der2)
             else:
-                raise Exception("Error: der out of range for meanProduct")            
+                raise Exception("Error: der out of range for meanSum")            
         return A
 
 class ScaleOfMean(Mean):
@@ -156,14 +156,11 @@ class PowerOfMean(Mean):
     def proceed(self,x=None,der=None):
         d = np.abs(np.floor(self.hyp[0])) 
         d = max(d,1)
-
         if der == None:                               # compute mean vector
             A = self.mean.proceed(x) **d              # accumulate means
-
         else:                                         # compute derivative vector
-            A = d * self.mean.proceed(x) ** (d-1) * self.mean.proceed(x, der-1)      \
-                * Tools.general.feval(f, meanhyper[1:], x, None, der-1)
-    return A
+            A = d * self.mean.proceed(x) ** (d-1) * self.mean.proceed(x, der-1)      
+        return A
 
 
 

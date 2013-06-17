@@ -65,32 +65,100 @@ class ProductOfKernel(Kernel):
     def __init__(self,cov1,cov2):
         self.cov1 = cov1
         self.cov2 = cov2
-        self.hyp = cov1.hyp + cov2.hyp
+        self._hyp = cov1.hyp + cov2.hyp
 
-    def proceed(self,*arg):
-        # where original covProd function be
-        pass
+    def sethyp(self,hyp):
+        assert len(hyp) == len(self._hyp)
+        len1 = len(self.cov1.hyp)
+        self._hyp = hyp 
+        self.cov1.hyp = self._hyp[:len1]
+        self.cov2.hyp = self._hyp[len1:]
+    def gethyp(self):
+        return self._hyp
+    hyp = property(gethyp,sethyp)
+
+    def proceed(self,x=None,z=None,der=None):
+        n, D = x.shape
+        AT = self.cov1.proceed(x,z)
+        A = np.zeros_like(AT)   
+        if der == None:                          # compute cov vector
+            A *= self.cov1.proceed(x,z)
+            A *= self.cov2.proceed(x,z)
+        elif isinstance(der, int):               # compute derivative vector  
+            if der < len(self.cov1.hyp):
+                A *= self.cov1.proceed(x, z, der)
+                A *= self.cov2.proceed(x, z)
+            elif der < len(self.hyp):
+                der2 = der - len(self.cov1.hyp)
+                A *= self.cov2.proceed(x, z, der2)
+                A *= self.cov1.proceed(x,z) 
+            else:
+                raise Exception("Error: der out of range for covProduct")            
+        return A
         
 
 class SumOfKernel(Kernel):
     def __init__(self,cov1,cov2):
         self.cov1 = cov1
         self.cov2 = cov2
-        self.hyp = cov1.hyp + cov2.hyp
+        self._hyp = cov1.hyp + cov2.hyp
+    def sethyp(self,hyp):
+        assert len(hyp) == len(self._hyp)
+        len1 = len(self.cov1.hyp)
+        self._hyp = hyp 
+        self.cov1.hyp = self._hyp[:len1]
+        self.cov2.hyp = self._hyp[len1:]
+    def gethyp(self):
+        return self._hyp
+    hyp = property(gethyp,sethyp)
 
-    def proceed(self,*arg):
-        # where original covProd function be
-        pass
+    def proceed(self,x=None,z=None,der=None):
+        n, D = x.shape
+        AT = self.cov1.proceed(x,z)
+        A = np.zeros_like(AT)                   # Allocate covariance Matrix
+        if der == None:                          # compute cov vector
+            A += self.cov1.proceed(x,z)
+            A += self.cov2.proceed(x,z)
+        elif isinstance(der, int):               # compute derivative vector  
+            if der < len(self.cov1.hyp):
+                A += self.cov1.proceed(x, z, der)
+            elif der < len(self.hyp):
+                der2 = der - len(self.cov1.hyp)
+                A += self.cov2.proceed(x, z, der2)
+            else:
+                raise Exception("Error: der out of range for covSum")            
+        return A
     
 
 class ScaleOfKernel(Kernel):
+# Compose a covariance function as a scaled version of another one
+# k(x^p,x^q) = sf2 * k0(x^p,x^q)
+#
+# The hyperparameter is :
+# hyp = [ log(sf2) ]
     def __init__(self,cov,scalar):
         self.cov = cov
-        self.hyp = cov.hyp + [scalar]
+        if cov.hyp:
+            self._hyp = [scalar] + cov.hyp 
+        else:
+            self._hyp = [scalar]
+    def sethyp(self,hyp):
+        assert len(hyp) == len(self._hyp)
+        self._hyp = hyp 
+        self.cov.hyp = self._hyp[1:]
+    def gethyp(self):
+        return self._hyp
+    hyp = property(gethyp,sethyp)
 
-    def proceed(self,*arg):
-        # where original covScale function be
-        pass
+    def proceed(self,x=None,z=None,der=None):
+        sf2 = np.exp(2.* self.hyp[0])                               # scale parameter   
+        if der == None:                                       # compute cov vector
+            A = sf2 * self.cov.proceed(x,z)                       # accumulate cov
+        elif isinstance(der, int) and der == 0:               # compute derivative w.r.t. sf2
+            A = 2. * sf2 * self.cov.proceed(x,z)
+        else:                                 
+            A = sf2 * self.cov.proceed(x, z, der-1) 
+        return A
      
 
 class FITCOfKernel(Kernel):
@@ -478,12 +546,93 @@ class covMatern(Kernel):
 
 
 class covPeriodic(Kernel):
-    pass
+    def __init__(self,hyp):
+        if len(hyp) == 3:
+            self.hyp = hyp
+        else:
+            print "Stationary covariance function for a smooth periodic function,"
+            print "with period p:"
+            print "k(x^p,x^q) = sf2 * exp( -2*sin^2( pi*||x^p - x^q)||/p )/ell**2 )"
+            print "The number of hyperparameters is 3" 
+            print "hyp = [ log(ell), log(p), log(sqrt(sf2)) ]"
+            print "------------------------------------------------------------------"
+            raise Exception("Wrong number of hyperparameters.")
+    def proceed(self, x=None, z=None, der=None):
+        ell = np.exp(self.hyp[0])        # characteristic length scale
+        p   = np.exp(self.hyp[1])        # period
+        sf2 = np.exp(2.*self.hyp[2])     # signal variance
+        n,D = x.shape
+        if z == 'diag':
+            A = np.zeros((n,1))
+        elif z == None:
+            A = np.sqrt(spdist.cdist(x, x, 'sqeuclidean'))
+            #A = np.sqrt(sq_dist(x))
+        else:
+            A = np.sqrt(spdist.cdist(x, z, 'sqeuclidean'))
+            #A = np.sqrt(sq_dist(x,z))
+        A = np.pi*A/p
+        if der == None:             # compute covariance matix for dataset x
+            A = np.sin(A)/ell
+            A = A * A
+            A = sf2 *np.exp(-2.*A)
+        else:
+            if der == 0:            # compute derivative matrix wrt 1st parameter
+                A = np.sin(A)/ell
+                A = A * A
+                A = 4. *sf2 *np.exp(-2.*A) * A
+            elif der == 1:          # compute derivative matrix wrt 2nd parameter
+                R = np.sin(A)/ell
+                A = 4 * sf2/ell * np.exp(-2.*R*R)*R*np.cos(A)*A
+            elif der == 2:          # compute derivative matrix wrt 3rd parameter
+                A = np.sin(A)/ell
+                A = A * A
+                A = 2. * sf2 * np.exp(-2.*A)
+            else:
+                raise Exception("Wrong derivative index in covPeriodic")            
+        return A
+
+
+class covNoise(Kernel):
+# Independent covariance function, ie "white noise", with specified variance.
+# NOTE: Calling this function with z = x does NOT produce the correct result!
+    def __init__(self,hyp):
+        if len(hyp) == 1:
+            self.hyp = hyp
+        else:
+            print "Noise covariance function is specified as:,"
+            print "k(x^p,x^q) = s2 * \delta(p,q)"
+            print "where s2 is the noise variance and \delta(p,q) is a Kronecker delta function"
+            print "which is 1 iff p=q and zero otherwise."
+            print "The number of hyperparameters is 1" 
+            print "hyp = [ log(sqrt(s2)) ]"
+            print "------------------------------------------------------------------"
+            raise Exception("Wrong number of hyperparameters.")
+    def proceed(self, x=None, z=None, der=None):
+        tol = 1.e-9                 # Tolerance for declaring two vectors "equal"
+        s2 = np.exp(2.*self.hyp[0])      # noise variance
+        n,D = x.shape
+        if z == 'diag':
+            A = np.ones((n,1))
+        elif z == None:
+            A = np.eye(n)
+        else:                       # compute covariance between data sets x and z
+            M = spdist.cdist(x, z, 'sqeuclidean')
+            #M = sq_dist(x,z)
+            A = np.zeros_like(M,dtype=np.float)
+            A[M < tol] = 1.
+        if der == None:
+            A = s2*A
+        else:                       # compute derivative matrix
+            if der == 0:
+                A = 2.*s2*A
+            else:
+                raise Exception("Wrong derivative index in covNoise")
+        return A
+
+
 class covRQiso(Kernel):
     pass
 class covRQard(Kernel):
-    pass
-class covNoise(Kernel):
     pass
 class covMatrix(Kernel):
     pass
