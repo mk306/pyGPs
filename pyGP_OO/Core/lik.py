@@ -1,3 +1,28 @@
+#===============================================================================
+#    Copyright (C) 2013
+#    Marion Neumann [marion dot neumann at uni-bonn dot de]
+#    Daniel Marthaler [marthaler at ge dot com]
+#    Shan Huang [shan dot huang at iais dot fraunhofer dot de]
+#    Kristian Kersting [kristian dot kersting at iais dot fraunhofer dot de]
+# 
+#    Fraunhofer IAIS, STREAM Project, Sankt Augustin, Germany
+# 
+#    This file is part of pyGPs.
+# 
+#    pyGPs is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+# 
+#    pyGPs is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#    GNU General Public License for more details.
+# 
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, see <http://www.gnu.org/licenses/>.
+#===============================================================================
+
 import numpy as np
 from scipy.special import erf
 import inf
@@ -66,9 +91,9 @@ class likGauss(Likelihood):
                     dlZhyp = ((y-mu)**2/(sn2+s2)-1) / (1+s2/sn2)           # deriv. w.r.t. hyp.lik
                     varargout = dlZhyp
             
-            elif isinstance(inffunc, infLaplace):
+            elif isinstance(inffunc, inf.infLaplace):
                 if der == None:                                                 # no derivative mode
-                    if not y: 
+                    if y == None: 
                         y=0 
                     ymmu = y-mu
                     lp = -ymmu**2/(2*sn2) - np.log(2*np.pi*sn2)/2. 

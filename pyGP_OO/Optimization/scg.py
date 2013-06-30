@@ -1,74 +1,31 @@
+#===============================================================================
+#   SCG  Scaled conjugate gradient optimization. 
+#   
+#   Copyright (c) Ian T Nabney (1996-2001)
+#   updates by Shan Huang 2013
+#
+#   Permission is granted for anyone to copy, use, or modify these
+#   programs and accompanying documents for purposes of research or
+#   education, provided this copyright notice is retained, and note is
+#   made of any changes that have been made.
+#
+#   These programs and documents are distributed without any warranty,
+#   express or implied.  As the programs were written for research
+#   purposes only, they have not been tested to the degree that would be
+#   advisable in any important application.  All use of these programs is
+#   entirely at the user's own risk."
+#=============================================================================== 
+
+
 from math import sqrt
 import numpy as np
 
-#function [x, options, flog, pointlog, scalelog] = scg(f, x, options, gradf, varargin)
-def run(f, x, args, niters = 100, gradcheck = False, display = 0, flog = False, pointlog = False, scalelog = False, tolX = 1.0e-8, tolO = 1.0e-8, eval = None):
-#SCG  Scaled conjugate gradient optimization.
-#
-#     Description
-#     [X, OPTIONS] = SCG(F, X, OPTIONS, GRADF) uses a scaled conjugate
-#     gradients algorithm to find a local minimum of the function F(X)
-#     whose gradient is given by GRADF(X).  Here X is a row vector and F
-#     returns a scalar value. The point at which F has a local minimum is
-#     returned as X.  The function value at that point is returned in
-#     OPTIONS(8).
-#
-#     [X, OPTIONS, FLOG, POINTLOG, SCALELOG] = SCG(F, X, OPTIONS, GRADF)
-#     also returns (optionally) a log of the function values after each
-#     cycle in FLOG, a log of the points visited in POINTLOG, and a log of
-#     the scale values in the algorithm in SCALELOG.
-#
-#     SCG(F, X, OPTIONS, GRADF, P1, P2, ...) allows additional arguments to
-#     be passed to F() and GRADF().     The optional parameters have the
-#     following interpretations.
-#
-#     OPTIONS(1) = display is set to 1 to display error values; also logs error
-#     values in the return argument ERRLOG, and the points visited in the
-#     return argument POINTSLOG.  If OPTIONS(1) is set to 0, then only
-#     warning messages are displayed.  If OPTIONS(1) is -1, then nothing is
-#     displayed.
-#
-#     OPTIONS(2)= tolX is a measure of the absolute precision required for the
-#     value of X at the solution.  If the absolute difference between the
-#     values of X between two successive steps is less than OPTIONS(2),
-#     then this condition is satisfied.
-#
-#     OPTIONS(3)= tolO is a measure of the precision required of the objective
-#     fuction at the solution.  If the absolute difference between the
-#     objective function values between two successive steps is less than
-#     OPTIONS(3), then this condition is satisfied. Both this and the
-#     previous condition must be satisfied for termination.
-#
-#     OPTIONS(9) is set to 1 to check the user defined gradient function.
-#
-#     OPTIONS(10) = funcCount returns the total number of function evaluations
-#     (including those in any line searches).
-#
-#     OPTIONS(11)= gradCount returns the total number of gradient evaluations.
-#
-#     OPTIONS(14) = niters is the maximum number of iterations; default 100.
-#
-#     See also
-#     CONJGRAD, QUASINEW
-#
-#
-#     Copyright (c) Ian T Nabney (1996-2001)
-
-#  Set up the options.
-
-    # Set up strings for evaluating function and gradient
-#    f = fcnchk(f, length(varargin));
-#    gradf = fcnchk(gradf, length(varargin));
-     
+def run(f, x, args, niters = 100, gradcheck = False, display = 0, flog = False, pointlog = False, scalelog = False, tolX = 1.0e-8, tolO = 1.0e-8, eval = None): 
     if display: print '\n***** starting optimization (SCG) *****\n'
     nparams = len(x);
-     
     #  Check gradients
-    if (gradcheck):
+    if gradcheck:
         pass
-#        feval('gradchek', x, f, gradf, varargin{:});
-
-     
     eps = 1.0e-4
     sigma0 = 1.0e-4
     result = f(x, *args)
@@ -85,8 +42,6 @@ def run(f, x, args, niters = 100, gradcheck = False, display = 0, flog = False, 
     betamin = 1.0e-15            # Lower bound on scale.
     betamax = 1.0e50             # Upper bound on scale.
     j = 1                        # j counts number of iterations.
-
-    
     if flog:
         pass
         #flog(j, :) = fold;
@@ -94,24 +49,20 @@ def run(f, x, args, niters = 100, gradcheck = False, display = 0, flog = False, 
         pass
         #pointlog(j, :) = x;
 
-     
     # Main optimization loop.
-    
     listF = [fold]
     if eval is not None:
         evalue, timevalue = eval(x, *args)
         evalList = [evalue]
         time = [timevalue]
 
-    while (j <= niters):
-         
+    while (j <= niters):   
         # Calculate first and second directional derivatives.
         if (success == 1):
             mu = np.dot(d, gradnew)
             if (mu >= 0):
                 d = - gradnew
                 mu = np.dot(d, gradnew)
-
             kappa = np.dot(d, d)
             if (kappa < eps):
                 #print "FNEW: " , fnow
@@ -168,14 +119,12 @@ def run(f, x, args, niters = 100, gradcheck = False, display = 0, flog = False, 
         if display > 0:
             print('***** Cycle %4d  Error %11.6f  Scale %e' %( j, fnow, beta))
 
-     
         if (success == 1):
         # Test for termination
-#            print type (alpha), type(d), type(tolX), type(fnew), type(fold)
-
+        # print type (alpha), type(d), type(tolX), type(fnew), type(fold)
             if ((max(abs(alpha*d)) < tolX) & (abs(fnew-fold) < tolO)):
-                #options(8) = fnew;
-#                print "FNEW: " , fnew
+                # options(8) = fnew;
+                # print "FNEW: " , fnew
                 if eval is not None:
                     return x, listF, evalList, time
                 else:
@@ -188,8 +137,8 @@ def run(f, x, args, niters = 100, gradcheck = False, display = 0, flog = False, 
                 gradCount += 1
                 # If the gradient is zero then we are done.
                 if (np.dot(gradnew, gradnew) == 0):
-#                    print "FNEW: " , fnew
-                    #options(8) = fnew;
+                    # print "FNEW: " , fnew
+                    # options(8) = fnew;
                     if eval is not None:
                         return x, listF, evalList, time
                     else:
@@ -215,10 +164,11 @@ def run(f, x, args, niters = 100, gradcheck = False, display = 0, flog = False, 
      
     # If we get here, then we haven't terminated in the given number of
     # iterations.
-    #options(8) = fold;
+    # options(8) = fold;
     if (display):
         print "maximum number of iterations reached"
     if eval is not None:
         return x, listF, evalList, time
     else:
         return x, listF
+

@@ -1,3 +1,28 @@
+#===============================================================================
+#    Copyright (C) 2013
+#    Marion Neumann [marion dot neumann at uni-bonn dot de]
+#    Daniel Marthaler [marthaler at ge dot com]
+#    Shan Huang [shan dot huang at iais dot fraunhofer dot de]
+#    Kristian Kersting [kristian dot kersting at iais dot fraunhofer dot de]
+# 
+#    Fraunhofer IAIS, STREAM Project, Sankt Augustin, Germany
+# 
+#    This file is part of pyGPs.
+# 
+#    pyGPs is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+# 
+#    pyGPs is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#    GNU General Public License for more details.
+# 
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, see <http://www.gnu.org/licenses/>.
+#===============================================================================
+
 import numpy as np
 import inf
 import mean
@@ -30,42 +55,8 @@ from tools import unique
 #   post         struct representation of the (approximate) posterior
 #                post is consist of post.alpha, post.L, post.sW
 #======================================================================================
-#
-#   Matlab Version:
-#   Copyright (c) by Carl Edward Rasmussen and Hannes Nickisch, 2011-02-18
-#  
-#   Python version:
-#   Copyright (C) 2009  
-#   Marion Neumann [marion dot neumann at iais dot fraunhofer dot de]
-#   Zhao Xu [zhao dot xu at iais dot fraunhofer dot de]
-#   Supervisor: Kristian Kersting [kristian dot kersting at iais dot fraunhofer dot de]
-# 
-#   Substantial updates:
-#   by Daniel Marthaler Fall 2012.
-#   
-#   pyGP_OO version:
-#   currently start trying to convert into object-oriented way
-#   by Shan Huang
-#
-#=======================================================================================
-#   Fraunhofer IAIS, STREAM Project, Sankt Augustin, Germany
-# 
-#   This file is part of pyXGPR.
-# 
-#   pyXGPR is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
-# 
-#   pyXGPR is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-# 
-#   You should have received a copy of the GNU General Public License 
-#   along with this program; if not, see <http://www.gnu.org/licenses/>.
-#
-#=======================================================================================
+
+
 
 
 def train(inffunc, meanfunc, covfunc, likfunc, x, y, optimizer):

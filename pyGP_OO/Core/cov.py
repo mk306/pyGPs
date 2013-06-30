@@ -1,5 +1,28 @@
-#! /usr/bin/env python
-#coding=utf-8
+#===============================================================================
+#    Copyright (C) 2013
+#    Marion Neumann [marion dot neumann at uni-bonn dot de]
+#    Daniel Marthaler [marthaler at ge dot com]
+#    Shan Huang [shan dot huang at iais dot fraunhofer dot de]
+#    Kristian Kersting [kristian dot kersting at iais dot fraunhofer dot de]
+# 
+#    Fraunhofer IAIS, STREAM Project, Sankt Augustin, Germany
+# 
+#    This file is part of pyGPs.
+# 
+#    pyGPs is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+# 
+#    pyGPs is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#    GNU General Public License for more details.
+# 
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, see <http://www.gnu.org/licenses/>.
+#===============================================================================
+
 
 import numpy as np
 import math
@@ -33,7 +56,7 @@ class Kernel(object):
     def fitc(self,inducingInput):
         return FITCOfKernel(self,inducingInput)
     
-    '''
+
     # not used anymore
     # replaced by spdist from scipy
     def sq_dist(self, a, b=None):
@@ -56,7 +79,7 @@ class Kernel(object):
             tem = tem - np.kron(np.ones((n,1)), b[d,:])
             C   = C + tem * tem 
         return C
-    '''
+
         
         
         
@@ -80,7 +103,7 @@ class ProductOfKernel(Kernel):
     def proceed(self,x=None,z=None,der=None):
         n, D = x.shape
         AT = self.cov1.proceed(x,z)
-        A = np.zeros_like(AT)   
+        A = np.ones_like(AT)   
         if der == None:                          # compute cov vector
             A *= self.cov1.proceed(x,z)
             A *= self.cov2.proceed(x,z)
@@ -366,7 +389,8 @@ class covSEard(Kernel):
                         tem = np.atleast_2d(x[:,der])/ell[der]
                         A *= spdist.cdist(tem,tem,'sqeuclidean')
                     else:
-                        A *= spdist.cdist(np.atleast_2d(x[:,der])/ell[der],np.atleast_2d(z[:,der])/ell[der],'sqeuclidean')
+                        #A *= self.sq_dist(np.atleast_2d(x[:,der])/ell[der],np.atleast_2d(z[:,der])/ell[der])
+                        A *= spdist.cdist(np.atleast_2d(x[:,der]).T/ell[der],np.atleast_2d(z[:,der]).T/ell[der],'sqeuclidean')
                 elif der==D:      # compute derivative matrix wrt magnitude parameter
                     A = 2.*A
                 else:
@@ -659,7 +683,7 @@ if __name__ == '__main__':
     k1 = covPoly([1,2,3])
     k2 = covPoly([2,2,2])
     k3 = covPoly([4,4,4])
-    myCov = k1*6 + k3*k2*k1
+    myCov = k1*k2*6 + k1*k2
     print myCov.hyp
 
     #########################################
@@ -676,7 +700,7 @@ if __name__ == '__main__':
     z = np.array([np.linspace(-1.9,1.9,101)]).T
     
     k = covSEard([0.1,0.2])
-    print k.proceed(x,z,1)
+    print myCov.proceed(x,z,1)
 
     # have the same result if passing same inputs to feval() 
     # covPoly tested!

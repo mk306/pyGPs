@@ -1,3 +1,28 @@
+#===============================================================================
+#    Copyright (C) 2013
+#    Marion Neumann [marion dot neumann at uni-bonn dot de]
+#    Daniel Marthaler [marthaler at ge dot com]
+#    Shan Huang [shan dot huang at iais dot fraunhofer dot de]
+#    Kristian Kersting [kristian dot kersting at iais dot fraunhofer dot de]
+# 
+#    Fraunhofer IAIS, STREAM Project, Sankt Augustin, Germany
+# 
+#    This file is part of pyGPs.
+# 
+#    pyGPs is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+# 
+#    pyGPs is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#    GNU General Public License for more details.
+# 
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, see <http://www.gnu.org/licenses/>.
+#===============================================================================
+
 import pyGP_OO
 from pyGP_OO.Core import *
 import numpy as np
@@ -6,7 +31,7 @@ import matplotlib.pyplot as plt
 #-----------------------------------------------------------------
 # initialze input data
 #-----------------------------------------------------------------
-PLOT = False
+PLOT = True
 
 #DATA
 x = np.array([[2.083970427750732,  -0.821018066101379,  -0.617870699182597,  -1.183822608860694,\
@@ -21,15 +46,16 @@ y = np.array([[4.549203746331698,   0.371985574437271,   0.711307965514790,  -0.
 # TEST points
 z = np.array([np.linspace(-1.9,1.9,101)]).T
 if PLOT:
-    pyGP.plot.datasetPlotter(x,y,[-1.9, 1.9, -0.9, 3.9])  
+    pyGP_OO.Visual.plot.datasetPlotter(x,y,[-1.9, 1.9, -0.9, 3.9])  
 
 
 #-----------------------------------------------------------------
 # step 1:
 # specify combinations of cov, mean, inf and lik functions
 #-----------------------------------------------------------------
-#k = cov.covSEiso([-1,10])
-k = cov.covPoly([10,1,1])
+k1 = cov.covSEiso([-1,0])
+k2 = cov.covPoly([2,1,1])
+k = k1*k2*6
 m = mean.meanZero()
 l = lik.likGauss([np.log(0.1)])
 i = inf.infExact()
@@ -42,9 +68,9 @@ i = inf.infExact()
 conf = pyGP_OO.Optimization.conf.random_init_conf(m,k,l)
 conf.max_trails = 20
 #conf.min_threshold = 100
-conf.covRange = [(-10,10), (-10,10)]
+conf.covRange = [(-10,10), (-10,10), (-10,10),(-10,10),(5,6)]
 conf.likRange = [(0,1)]
-o = opt.Minimize()
+o = opt.Minimize(conf)
 #o = opt.CG(conf)
 #o = opt.BFGS(conf)
 #o = opt.SCG(conf)
@@ -111,10 +137,11 @@ m = mean.meanZero()
 l = lik.likGauss([np.log(0.1)])
 
 conf = pyGP_OO.Optimization.conf.random_init_conf(m,k,l)
-conf.min_threshold = 28.3
-conf.covRange = [(-10,10), (-10,10)]
+conf.min_threshold = 20
+conf.max_trails = 300
+conf.covRange = [(-1,1), (-1,1)]
 conf.likRange = [(0,0.2)]
-o = opt.Minimize()
+o = opt.Minimize(conf)
 
 out = gp.analyze(i,m,k,l,x,y,True)
 print "[fitc] nlz=", out[0]
@@ -127,7 +154,8 @@ y2F = out[1]
 mF  = out[2]
 s2F = out[3]
 
-pyGP_OO.Visual.plot.fitcPlotter(u,z,ymF,y2F,x,y,[-1.9, 1.9, -0.9, 3.9])
+if PLOT:
+    pyGP_OO.Visual.plot.fitcPlotter(u,z,ymF,y2F,x,y,[-1.9, 1.9, -0.9, 3.9])
 
 
 #-----------------------------------------------------------------

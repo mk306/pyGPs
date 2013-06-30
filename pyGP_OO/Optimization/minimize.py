@@ -1,37 +1,40 @@
 
-#This program is distributed WITHOUT ANY WARRANTY; without even the implied 
-#warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+#===============================================================================
+#   This program is distributed WITHOUT ANY WARRANTY; without even the implied 
+#   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
 #
 #
-#This file contains a Python version of Carl Rasmussen's Matlab-function 
-#minimize.m
+#   This file contains a Python version of Carl Rasmussen's Matlab-function 
+#   minimize.m
 #
-#minimize.m is copyright (C) 1999 - 2006, Carl Edward Rasmussen.
-#Python adaptation by Roland Memisevic 2008.
+#   minimize.m is copyright (C) 1999 - 2006, Carl Edward Rasmussen.
+#   Python adaptation by Roland Memisevic 2008.
+#   updates by Shan Huang 2013
 #
 #
-#The following is the original copyright notice that comes with the 
-#function minimize.m
-#(from http://www.kyb.tuebingen.mpg.de/bs/people/carl/code/minimize/Copyright):
-#Rasmussen
+#   The following is the original copyright notice that comes with the 
+#   function minimize.m
+#   (from http://www.kyb.tuebingen.mpg.de/bs/people/carl/code/minimize/Copyright):
+#   Rasmussen
 #
-#"(C) Copyright 1999 - 2006, Carl Edward Rasmussen
+#   "(C) Copyright 1999 - 2006, Carl Edward Rasmussen
 #
-#Permission is granted for anyone to copy, use, or modify these
-#programs and accompanying documents for purposes of research or
-#education, provided this copyright notice is retained, and note is
-#made of any changes that have been made.
+#   Permission is granted for anyone to copy, use, or modify these
+#   programs and accompanying documents for purposes of research or
+#   education, provided this copyright notice is retained, and note is
+#   made of any changes that have been made.
 #
-#These programs and documents are distributed without any warranty,
-#express or implied.  As the programs were written for research
-#purposes only, they have not been tested to the degree that would be
-#advisable in any important application.  All use of these programs is
-#entirely at the user's own risk."
+#   These programs and documents are distributed without any warranty,
+#   express or implied.  As the programs were written for research
+#   purposes only, they have not been tested to the degree that would be
+#   advisable in any important application.  All use of these programs is
+#   entirely at the user's own risk."
+#===============================================================================
 
 
-"""minimize.py 
+"""
 
-This module contains a function 'minimize' that performs unconstrained
+This module contains a function  that performs unconstrained
 gradient based optimization using nonlinear conjugate gradients. 
 
 The function is a straightforward Python-translation of Carl Rasmussen's
@@ -164,5 +167,5 @@ def run(f, X, args, length=None, red=1.0, verbose=False):
             ls_failed = 1                             # this line search failed
     
     if verbose: print "\n"
-    print fX
+    #print fX
     return X, fX, i

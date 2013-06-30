@@ -1,3 +1,28 @@
+#===============================================================================
+#    Copyright (C) 2013
+#    Marion Neumann [marion dot neumann at uni-bonn dot de]
+#    Daniel Marthaler [marthaler at ge dot com]
+#    Shan Huang [shan dot huang at iais dot fraunhofer dot de]
+#    Kristian Kersting [kristian dot kersting at iais dot fraunhofer dot de]
+# 
+#    Fraunhofer IAIS, STREAM Project, Sankt Augustin, Germany
+# 
+#    This file is part of pyGPs.
+# 
+#    pyGPs is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+# 
+#    pyGPs is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#    GNU General Public License for more details.
+# 
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, see <http://www.gnu.org/licenses/>.
+#===============================================================================
+
 import pyGP_OO
 from pyGP_OO.Core import *
 import numpy as np
@@ -8,7 +33,7 @@ import matplotlib.mlab as mlab
 #-----------------------------------------------------------------
 # initialze input data
 #-----------------------------------------------------------------
-PLOT = False
+PLOT = True
 
 # GENERATE data from a noisy GP
 n1 = 80; n2 = 40;
@@ -170,11 +195,15 @@ if PLOT:
 # specify combinations of cov, mean, inf and lik functions
 #-----------------------------------------------------------------
 
-k = cov.covSEard([0.051885508906388,0.170633324977413,1.218386482861781])
-m = mean.meanConst([0.])
-#m = mean.meanZero()
+k1 = cov.covSEard([0.05,0.17,1.21])
+k2 = cov.covSEiso([-1,0])
+k3 = cov.covPoly([2,1,1])
+k = k1*k3*6
+m1 = mean.meanConst([1.])
+m2 = mean.meanZero()
+m = m1+m2
 l = lik.likErf()
-#i = inf.infLaplace()
+i = inf.infLaplace()
 i = inf.infEP()
 
 
@@ -206,7 +235,7 @@ print "optimal nlz", out
 #-----------------------------------------------------------------
 out = gp.predict(i,m,k,l,x,y,t,np.ones((n,1)))
 a = out[0]; b = out[1]; c = out[2]; d = out[3]; lp = out[4]
-print a
+#print a
 if PLOT:
     fig = plt.figure()
     plt.plot(x1[:,0], x1[:,1], 'b+', markersize = 12)
@@ -226,19 +255,19 @@ u1,u2 = np.meshgrid(np.linspace(-2,2,5),np.linspace(-2,2,5))
 u = np.array(zip(np.reshape(u2,(np.prod(u2.shape),)),np.reshape(u1,(np.prod(u1.shape),)))) 
 
 # specify FITC covariance functions
-k = cov.covSEiso([-1.0,10.0]).fitc(u)
+k = cov.covSEard([0.051885508906388,0.170633324977413,1.218386482861781]).fitc(u)
 # specify FICT inference method
 i = inf.infFITC_EP()
+i = inf.infFITC_Laplace()
 
 # The rest usage is the same as STANDARD GP
 # Here we just give one example:
-m = mean.meanConst([1.])
-l = lik.likGauss([np.log(0.1)])
+m = mean.meanZero()
+l = lik.likErf()
 
 conf = pyGP_OO.Optimization.conf.random_init_conf(m,k,l)
 conf.max_trails = 500
-conf.covRange = [(-10,10), (-10,10)]
-conf.likRange = [(0,0.2)]
+conf.covRange = [(-10,10), (-10,10), (-10,10)]
 o = opt.Minimize()
 
 
@@ -248,6 +277,17 @@ print "[fitc] nlz=", out[0]
 nlZ_trained = gp.train(i,m,k,l,x,y,o)
 print '[fitc] optimal nlZ=', nlZ_trained
 out = gp.predict(i,m,k,l,x,y,t,np.ones((n,1)))
+
+if PLOT:
+    fig = plt.figure()
+    plt.plot(x1[:,0], x1[:,1], 'b+', markersize = 12)
+    plt.plot(x2[:,0], x2[:,1], 'r+', markersize = 12)
+    plt.plot(u[:,0],u[:,1],'ko', markersize=12)
+    pc = plt.contour(t1, t2, np.reshape(np.exp(lp), (t1.shape[0],t1.shape[1]) ))
+    fig.colorbar(pc)
+    plt.grid()
+    plt.axis([-4, 4, -4, 4])
+    plt.draw()
 
 
 
