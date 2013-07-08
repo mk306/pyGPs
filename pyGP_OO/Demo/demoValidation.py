@@ -58,7 +58,7 @@ y = np.int8(y)
 # 10-fold validation
 #------------------------------------------------------
 K = 10
-measure_PREC = []
+measure_ACC = []
 measure_RMSE = []
 for x_train, x_test, y_train, y_test in valid.k_fold_validation(x,y,K):
     '''
@@ -98,16 +98,16 @@ for x_train, x_test, y_train, y_test in valid.k_fold_validation(x,y,K):
 
     pred_class = np.sign(out[0])
 
-    Here I gave an example of evaluation on MSRE and Precision,
+    Here I gave an example of evaluation on MSRE and Accuracy,
     see other evaluation meatures in valid.py
     '''
     pred_class = np.sign(out[0])
-    preci = valid.Prec(pred_class, y_test)
+    acc = valid.ACC(pred_class, y_test)
     msre = valid.RMSE(pred_class, y_test)
-    measure_PREC.append(preci)
+    measure_ACC.append(acc)
     measure_RMSE.append(msre)
 
-print 'average precision: ', np.mean(measure_PREC)
+print 'average accuracy: ', np.mean(measure_ACC)
 print 'average root-mean-square error: ', np.mean(measure_RMSE)
 
 

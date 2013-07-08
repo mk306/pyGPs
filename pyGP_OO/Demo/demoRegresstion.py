@@ -55,7 +55,10 @@ if PLOT:
 #-----------------------------------------------------------------
 k1 = cov.covSEiso([-1,0])
 k2 = cov.covPoly([2,1,1])
-k = k1*k2*6
+k3 = cov.ScaleOfKernel(k2,6)
+k = k1 * k3
+# alternatively you can use k = k1*k2*6
+# scalar 6 will also be treated as a hyperparameter
 m = mean.meanZero()
 l = lik.likGauss([np.log(0.1)])
 i = inf.infExact()
