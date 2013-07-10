@@ -24,7 +24,7 @@ pyGP_FN follows structure and functionality of the gpml matlab implementaion by 
 
 pyGP_OO is an object oriented implemetation of GP regression and classificaion.
 
-
+---------------------------------------------------
 ACKNOWLEDGEMENTS
 
 The following persons actively developed and/or helped to improve this software: Daniel Marthaler, Shan Huang, Roman Garnett, Hannes Nickisch, Zhao Xu and Kristian Kersting.
@@ -37,6 +37,7 @@ pyGPs is distributed in the hope that it will be useful, but WITHOUT ANY WARRANT
 
 ---------------------------------------------------
 For an implementation of relational GP (XGP) Regression use pyXGPR:
+
 http://www-kd.iai.uni-bonn.de/index.php?page=software_details&id=19 
 
 pyXGPR is a python implementation of Standard and Relational GPR. Standard GPR follows the matlab implementation by Carl Edward Rasmussen and Chris Williams which is under (C) Copyright 2005 – 2007. Standard GPs are extended to utilize relational information among data points following the hidden common cause model (XGP framework). Both GP variants offer methods for training and predicion. Within training the hyperparameters are optimized by maximizing the marginal likelihood by using a python implementation by Roland Memisevic of Carl Edward Rasmussen minimize.m (C) Copyright 1999 – 2006.
