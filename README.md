@@ -27,7 +27,7 @@ pyGP_OO is an object oriented implemetation of GP regression and classificaion.
 ---------------------------------------------------
 ACKNOWLEDGEMENTS
 
-The following persons actively developed and/or helped to improve this software: Daniel Marthaler, Shan Huang, Roman Garnett, Hannes Nickisch, Zhao Xu and Kristian Kersting.
+The following persons actively developed and/or helped to improve this software: Daniel Marthaler, Shan Huang, Roman Garnett, Maciej Kurek, Hannes Nickisch, Zhao Xu and Kristian Kersting.
 
 ---------------------------------------------------
 
