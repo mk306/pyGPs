@@ -25,12 +25,15 @@ pyGP_FN follows structure and functionality of the gpml matlab implementaion by 
 pyGP_OO is an object oriented implemetation of GP regression and classificaion.
 
 
+ACKNOWLEDGEMENTS
+
+The following persons actively developed and/or helped to improve this software: Daniel Marthaler, Shan Huang, Roman Garnett, Hannes Nickisch, Zhao Xu and Kristian Kersting.
+
+---------------------------------------------------
+
 pyGPs is free software; you can redistribute it and/or modify  it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or  (at your option) any later version.
 
 pyGPs is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the  GNU General Public License for more details.
-
-ACKNOWLEDGEMENTS
-The following persons actively developed and/or helped to improve this software: Daniel Marthaler, Shan Huang, Roman Garnett, Hannes Nickisch, Zhao Xu and Kristian Kersting.
 
 ---------------------------------------------------
 For an implementation of relational GP (XGP) Regression use pyXGPR:
