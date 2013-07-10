@@ -13,7 +13,7 @@ You can find the latest stable version (pyXGPR) HERE: http://www-kd.iai.uni-bonn
 
 Please feel free to contact me if you have any questions or suggestions.
 
-Marion Neumann [marion dot neumann at iais dot fraunhofer dot de]
+Marion Neumann [marion (dot) neumann (at) uni (minus) bonn (dot) de]
 
 ---------------------------------------------------
 QUICK INTRODUCTION
@@ -29,6 +29,8 @@ pyGPs is free software; you can redistribute it and/or modify  it under the term
 
 pyGPs is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the  GNU General Public License for more details.
 
+ACKNOWLEDGEMENTS
+The following persons actively developed and/or helped to improve this software: Daniel Marthaler, Shan Huang, Roman Garnett, Hannes Nickisch, Zhao Xu and Kristian Kersting.
 
 ---------------------------------------------------
 For an implementation of relational GP (XGP) Regression use pyXGPR:
